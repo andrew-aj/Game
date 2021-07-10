@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.17)
+project(Vulkan)
+set(CMAKE_CXX_STANDARD 17)
+
+include(CTest)
+enable_testing()
+find_library(GLFW glfw3)
+add_subdirectory(bgfx)
+include_directories("src")
+include_directories("C:/VulkanSDK/1.2.170.0/Include")
+include_directories("include")
+find_package(Vulkan REQUIRED FATAL_ERROR)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "../bin")
+
+file(GLOB_RECURSE Vulkan CONFIGURE_DEPENDS "src/*.cpp" "src/*.h")
+add_executable(Vulkan WIN32 ${Vulkan})
+target_link_libraries(Vulkan ${GLFW} Vulkan::Vulkan)
