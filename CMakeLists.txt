@@ -9,6 +9,8 @@ add_subdirectory(bgfx)
 include_directories("src")
 include_directories("C:/VulkanSDK/1.2.170.0/Include")
 include_directories("include")
+include_directories("bgfx/bgfx/include")
+include_directories("bgfx/bx/include")
 find_package(Vulkan REQUIRED FATAL_ERROR)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "../bin")
 

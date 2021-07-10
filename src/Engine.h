@@ -1,10 +1,19 @@
 #ifndef VULKAN_ENGINE_H
 #define VULKAN_ENGINE_H
 
-#define GLFW_INCLUDE_VULKAN
+#if LINUX
+#define GLFW_EXPOSE_NATIVE_X11
+#elif WIN32
+#define GLFW_EXPOSE_NATIVE_WIN32
+#elif MACOS
+#define GLFW_EXPOSE_NATIVE_COCOA
+#endif
 #include "GLFW/glfw3.h"
 #include "GLFW/glfw3native.h"
 #include "boxer/boxer.h"
+#include "bgfx/bgfx.h"
+#include "bgfx/platform.h"
+#include "bx/bx.h"
 
 #include "Input.h"
 
@@ -32,9 +41,6 @@ namespace SGE {
         uint32_t WIDTH, HEIGHT;
 
         GLFWwindow *window = nullptr;
-        Diligent::RefCntAutoPtr<Diligent::ISwapChain> swapChain;
-        Diligent::RefCntAutoPtr<Diligent::IRenderDevice> renderDevice;
-        Diligent::RefCntAutoPtr<Diligent::IDeviceContext> deviceContext;
     };
 
     Engine::Engine() : name("Vulkan"), WIDTH(1280), HEIGHT(720) {
@@ -47,14 +53,12 @@ namespace SGE {
     }
 
     Engine::~Engine() {
-
+        bgfx::shutdown();
+        glfwTerminate();
     }
 
     void Engine::resizeCallback(GLFWwindow *window, int width, int height) {
         Engine *engine = (Engine *) glfwGetWindowUserPointer(window);
-        if (engine->swapChain != nullptr) {
-            engine->swapChain->Resize((uint32_t) width, (uint32_t) height);
-        }
     }
 
     bool Engine::createWindow() {
@@ -62,6 +66,7 @@ namespace SGE {
             boxer::show("GLFW failed to initalize.", "Error");
             return false;
         }
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
         window = glfwCreateWindow(WIDTH, HEIGHT, name.c_str(), nullptr, nullptr);
         if (window == nullptr) {
@@ -80,33 +85,25 @@ namespace SGE {
     }
 
     bool Engine::initEngine() {
-#if PLATFORM_WIN32
-        Diligent::Win32NativeWindow Window{glfwGetWin32Window(window)};
+        bgfx::renderFrame();
+        bgfx::Init init;
+#if WIN32
+        init.platformData.nwh = glfwGetWin32Window(window);
+#elif MACOS
+        init.platformData.nwh = glfwGetCocoaWindow(window);
+#elif LINUX
+        init.platformData.ndt = glfwGetX11Display();
+        init.platformData.nwh = (void*)(uintptr_t)glfwGetX11Window(window);
 #endif
-#if PLATFORM_LINUX
-        Diligent::LinuxNativeWindow Window;
-    Window.WindowId = glfwGetX11Window(window);
-    Window.pDisplay = glfwGetX11Display();
-    if (DevType == RENDER_DEVICE_TYPE_GL)
-        glfwMakeContextCurrent(window);
-#endif
-#if PLATFORM_MACOS
-        Diligent::MacOSNativeWindow Window;
-    if (DevType == RENDER_DEVICE_TYPE_GL)
-        glfwMakeContextCurrent(window);
-    else
-        Window.pNSView = GetNSWindowView(window);
-#endif
-        Diligent::SwapChainDesc SCDesc;
-        auto *factoryVk = Diligent::GetEngineFactoryVk();
-        Diligent::EngineVkCreateInfo EngineCI;
-        factoryVk->CreateDeviceAndContextsVk(EngineCI, &renderDevice, &deviceContext);
-        factoryVk->CreateSwapChainVk(renderDevice, deviceContext, SCDesc, Window, &swapChain);
 
-        if(renderDevice == nullptr || deviceContext == nullptr || swapChain == nullptr)
+        init.resolution.width = WIDTH;
+        init.resolution.height = HEIGHT;
+        init.resolution.reset = BGFX_RESET_VSYNC;
+        if(!bgfx::init(init))
             return false;
-
-        return true;
+        const bgfx::ViewId kClearView = 0;
+        bgfx::setViewClear(kClearView, BGFX_CLEAR_COLOR);
+        bgfx::setViewRect(kClearView, 0, 0, bgfx::BackbufferRatio::Equal);
     }
 
 }
