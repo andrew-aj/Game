@@ -99,6 +99,7 @@ namespace SGE {
         init.resolution.width = WIDTH;
         init.resolution.height = HEIGHT;
         init.resolution.reset = BGFX_RESET_VSYNC;
+        init.type = bgfx::RendererType::Vulkan;
         if(!bgfx::init(init))
             return false;
         const bgfx::ViewId kClearView = 0;
