@@ -34,7 +34,7 @@ namespace SGE {
 
         template<typename T>
         bool hasComponent() {
-            return m_scene->m_world.has<T>(m_entity);
+            return m_scene->m_world.all_of<T>(m_entity);
         }
 
         template<typename T>
