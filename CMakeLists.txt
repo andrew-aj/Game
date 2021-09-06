@@ -4,10 +4,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_PREFIX_PATH $ENV{CMAKE_PREFIX_PATH})
 
 include(CTest)
-find_package(PkgConfig REQUIRED)
+#find_package(PkgConfig REQUIRED)
 enable_testing()
 
-pkg_search_module(GLFW REQURED glfw3)
+#pkg_search_module(GLFW REQURED glfw3)
+find_library(GLFW glfw3 HINTS "${CMAKE_PREFIX_PATH}/GLFW/lib")
 find_package(Vulkan REQUIRED FATAL_ERROR)
 find_package(OpenGL REQUIRED)
 

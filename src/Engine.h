@@ -16,9 +16,14 @@
 #include "bx/bx.h"
 
 #include "Input.h"
+#include "Components.h"
+#include "Scene.h"
+#include "SystemManager.h"
+#include "Entity.h"
 
 #include <string>
 #include <cstdint>
+#include <iostream>
 
 namespace SGE {
 
@@ -36,11 +41,20 @@ namespace SGE {
 
         bool initEngine();
 
+        void update();
+
     private:
         std::string name;
         uint32_t WIDTH, HEIGHT;
 
         GLFWwindow *window = nullptr;
+        std::shared_ptr<Entity> windowEnt;
+
+        Scene m_scene;
+
+        SystemManager manager = SystemManager(m_scene);
+
+        static const bgfx::ViewId kClearView = 0;
     };
 
     Engine::Engine() : name("Vulkan"), WIDTH(1280), HEIGHT(720) {
@@ -59,6 +73,9 @@ namespace SGE {
 
     void Engine::resizeCallback(GLFWwindow *window, int width, int height) {
         Engine *engine = (Engine *) glfwGetWindowUserPointer(window);
+        windowSizeUpdate(engine->m_scene.m_world, width, height);
+        bgfx::reset((uint32_t)width, (uint32_t)height, BGFX_RESET_VSYNC);
+        bgfx::setViewRect(kClearView, 0, 0, bgfx::BackbufferRatio::Equal);
     }
 
     bool Engine::createWindow() {
@@ -81,6 +98,9 @@ namespace SGE {
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, resizeCallback);
 
+        windowEnt = std::make_shared<Entity>(m_scene.createEntity());
+        windowEnt->addComponent<Tag, std::string>("Primary Window");
+        windowEnt->addComponent<WindowPtr>(window, false);
         return true;
     }
 
@@ -100,12 +120,27 @@ namespace SGE {
         init.resolution.height = HEIGHT;
         init.resolution.reset = BGFX_RESET_VSYNC;
         init.type = bgfx::RendererType::Vulkan;
-        if(!bgfx::init(init))
+        if(!bgfx::init(init)) {
+            boxer::show("Failed to initialize BGFX!", "Error!");
             return false;
-        const bgfx::ViewId kClearView = 0;
+        }
         bgfx::setViewClear(kClearView, BGFX_CLEAR_COLOR);
         bgfx::setViewRect(kClearView, 0, 0, bgfx::BackbufferRatio::Equal);
+
+        return true;
     }
+
+    void Engine::update(){
+        while(!glfwWindowShouldClose(window)){
+            glfwPollEvents();
+            bgfx::touch(kClearView);
+            while(manager.canTick()){
+                manager.tickSystem();
+            }
+            bgfx::frame();
+        }
+    }
+
 
 }
 

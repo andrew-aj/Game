@@ -8,27 +8,20 @@ namespace SGE {
 
     class Entity;
 
-    class SystemManager;
-
     class Scene {
     public:
+        entt::registry m_world;
+
         Scene() = default;
 
         ~Scene() = default;
 
-        Entity createEntity(const std::string &name);
+        Entity createEntity();
 
         void destroyEntity(Entity entity);
 
     private:
-        entt::registry m_world;
 
-        //flecs::entity basePrefab = m_world.prefab("basePrefab").set<Transform>({{0, 0, 0}, {0, 0, 0, 0}, {1, 1, 1}});
-        //flecs::type base = m_world.type("base").add_instanceof(basePrefab).add<Transform>().add<Physics>();
-
-        friend class Entity;
-
-        friend class SystemManager;
 
     };
 

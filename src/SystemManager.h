@@ -10,6 +10,7 @@
 #include <vector>
 #include <entt/entt.hpp>
 #include <string>
+#include <functional>
 #include <numeric>
 #include "System.h"
 #include "Scene.h"
@@ -21,7 +22,7 @@ namespace SGE {
         static constexpr unsigned short min_priority = std::numeric_limits<unsigned short>::max();
         static constexpr unsigned short max_priority = std::numeric_limits<unsigned short>::min();
 
-        SystemManager(Scene& scene) {
+        explicit SystemManager(Scene& scene) {
             unsigned int temp = std::thread::hardware_concurrency();
             if (temp > 1 && temp <= 64) {
                 MAX_THREADS = std::thread::hardware_concurrency();
@@ -69,6 +70,16 @@ namespace SGE {
         void registerSystem(System *system, unsigned short priority) {
             priorityQueue.insert(std::make_pair(priority, system));
         }
+/*
+        template<typename out, typename... Args>
+        void createInitialSystem(std::function<out(Args...)> func, Args... args){
+            func(args...);
+        }
+
+        template<typename... Args>
+        void createInitialSystemVoid(std::function<void(Args...)> func, Args... args){
+            func(args...);
+        }*/
 
         bool tickSystem(unsigned short priority) {
             assert(priorityQueue.find(priority) != priorityQueue.end());
@@ -88,10 +99,15 @@ namespace SGE {
         }
 
         bool tickSystem() {
+            return tickSystem(currentVal++);
+        }
+
+        bool canTick(){
             if (priorityQueue.find(currentVal) == priorityQueue.end()) {
                 currentVal = 0;
+                return false;
             }
-            return tickSystem(currentVal++);
+            return true;
         }
 
     private:

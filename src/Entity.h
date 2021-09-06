@@ -23,12 +23,12 @@ namespace SGE {
         }
 
         template<typename T, typename... Args>
-        const T *addComponent(const T &&input) {
-            return m_scene->m_world.emplace_or_replace<T>(m_entity, std::forward<T>(input));
+        T& addComponent(Args... args) {
+            return m_scene->m_world.emplace_or_replace<T>(m_entity, args...);
         }
 
         template<typename T>
-        const T *getComponent() {
+        const T& getComponent() {
             return m_scene->m_world.try_get<T>(m_entity);
         }
 

@@ -2,7 +2,7 @@
 #include "Entity.h"
 
 namespace SGE{
-    Entity Scene::createEntity(const std::string &name) {
+    Entity Scene::createEntity() {
         Entity entity(m_world.create(), this);
         return entity;
     }
