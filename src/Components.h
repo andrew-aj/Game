@@ -6,6 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <string>
 #include <GLFW/glfw3.h>
+#include "bgfx_utils.h"
 
 namespace SGE {
     struct Transform {
@@ -46,6 +47,10 @@ namespace SGE {
         int xBottom = 0, yBottom = 0;
         //xTop, yTop, xBottom, yBottom, xScale, yScale, width, height
         std::function<void(int&, int&, int&, int&, float, float, int, int)> scalingFunction;
+    };
+
+    struct MeshComponent{
+        Mesh* mesh;
     };
 }
 

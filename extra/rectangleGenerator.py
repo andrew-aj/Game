@@ -11,13 +11,13 @@ indices = [[0] * 3 for b in range(indexCount)]
 
 for i in range(y):
     for j in range(x):
-        vertices[i * x + j] = [j, i, 0]
+        vertices[i * x + j] = [j-(x-1)/2, i-(y-1)/2, 0]
 
 index = 0
 
 for i in range(y - 1):
     for j in range((x - 1) * 2):
-        if j % 2 is 0:
+        if j % 2 == 0:
             indices[index] = [int(j/2),int((i+1)*x+(j/2)),int((i+1)*x+(j/2+1))]
         else:
             indices[index] = [int((j-1)/2),int((j+1)/2),int((i+1)*x+((j-1)/2+1))]

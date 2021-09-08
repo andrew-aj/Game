@@ -20,6 +20,7 @@
 #include "Scene.h"
 #include "SystemManager.h"
 #include "Entity.h"
+#include "ModelLoader.h"
 
 #include <string>
 #include <cstdint>

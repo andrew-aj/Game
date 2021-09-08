@@ -5,25 +5,44 @@
 #include <fstream>
 
 #include "boxer/boxer.h"
+#include "entt/entt.hpp"
+#include "Scene.h"
+#include "Entity.h"
 
-class ModelLoader {
-public:
-    bool success = true;
+namespace SGE {
 
-    ModelLoader(const std::string& path);
-private:
-    ModelLoader() : ModelLoader("example.dt") {}
-};
+    class ModelLoader {
+    public:
+        ModelLoader(Scene *scene);
 
-ModelLoader::ModelLoader(const std::string &path) {
-    std::fstream loader("data/models/"+path, std::ios_base::in);
+        entt::entity loadMesh(const std::string &loc);
 
-    if (loader.fail()){
-        boxer::show("Model does not exist.", "Error");
-        success = false;
-        return;
+    private:
+        ModelLoader() : ModelLoader(nullptr) {}
+
+        Scene *scene;
+    };
+
+    ModelLoader::ModelLoader(Scene *scene) {
+        this->scene = scene;
     }
 
+    entt::entity ModelLoader::loadMesh(const std::string &loc) {
+        Entity result = scene->createEntity();
+        std::fstream open("data/models/" + loc, std::ios_base::in);
+
+        if (open.fail()) {
+            std::string message = "Error, cannot open and/or find the model for " + loc;
+            boxer::show(message.c_str(), "Error!");
+            return entt::null;
+        }
+
+        if (loc.find("Model") != std::string::npos){
+            std::string line;
+            std::getline(open, line);
+
+        }
+    }
 
 }
 
