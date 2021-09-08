@@ -1,0 +1,8 @@
+//[model name]
+//[true or false if mesh is bin file or predefined]
+//[if true then bin file name]
+//[number of vertices]
+//[number of triangles]
+//[vertex list{{1,2,3},{4,5,6}}]
+//[index list {1,2,3,4}]
+//if need to go to next line use semi-colon

@@ -1,5 +1,6 @@
-/bin/
-!/bin/data
+bin/*
+!bin/data/models
+!bin/data/textures
 /cmake-build-debug/
 /cmake-build-release/
 /bgfx/
