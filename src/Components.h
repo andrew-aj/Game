@@ -49,8 +49,25 @@ namespace SGE {
         std::function<void(int&, int&, int&, int&, float, float, int, int)> scalingFunction;
     };
 
-    struct MeshComponent{
+    struct ModelComponent{
         Mesh* mesh;
+    };
+
+    struct MeshComponent{
+        std::vector<float[3]> vertices;
+        std::vector<int> indices;
+    };
+
+    struct Program{
+        bgfx::ProgramHandle programID;
+    };
+
+    struct VertexBuffer{
+        bgfx::VertexBufferHandle vbh;
+    };
+
+    struct IndexBuffer{
+        bgfx::IndexBufferHandle ibh;
     };
 }
 

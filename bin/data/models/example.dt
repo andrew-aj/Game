@@ -5,4 +5,6 @@
 //[number of triangles]
 //[vertex list{{1,2,3},{4,5,6}}]
 //[index list {1,2,3,4}]
+//[vertexShader]
+//[fragmentShader]
 //if need to go to next line use semi-colon
