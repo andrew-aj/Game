@@ -7,33 +7,35 @@
 
 #include "boxer/boxer.h"
 #include "entt/entt.hpp"
-#include "Scene.h"
 #include "Entity.h"
+#include "bgfxutils.h"
 
 namespace SGE {
 
     class ModelLoader {
     public:
-        ModelLoader(Scene *scene);
+        ModelLoader(entt::registry *registry);
 
         entt::entity loadMesh(const std::string &loc);
 
     private:
-        ModelLoader() : ModelLoader(nullptr) {}
+        ModelLoader() {
+            this->m_registry = nullptr;
+        }
 
         void handleModel(Entity &entity, std::fstream &open);
 
         void handleMesh(Entity &entity, std::fstream &open);
 
-        Scene *scene;
+        entt::registry* m_registry;
     };
 
-    ModelLoader::ModelLoader(Scene *scene) {
-        this->scene = scene;
+    ModelLoader::ModelLoader(entt::registry *registry) {
+        m_registry = registry;
     }
 
     entt::entity ModelLoader::loadMesh(const std::string &loc) {
-        Entity result = scene->createEntity();
+        Entity result = Entity(m_registry);
         std::fstream open("data/models/" + loc, std::ios_base::in);
 
         if (open.fail()) {
@@ -90,19 +92,19 @@ namespace SGE {
                 loc = line.find('{');
             }
 
-            float vertex[3] = {0};
+            Vertex vertex;
 
             std::stringstream stream;
             stream << line;
 
             std::getline(stream, line, ',');
-            vertex[0] = std::stof(line);
+            vertex.x = std::stof(line);
 
             std::getline(stream, line, ',');
-            vertex[1] = std::stof(line);
+            vertex.y = std::stof(line);
 
             std::getline(stream, line, '\0');
-            vertex[2] = std::stof(line);
+            vertex.z = std::stof(line);
 
             vertices.push_back(vertex);
 
@@ -111,35 +113,33 @@ namespace SGE {
         }
         std::getline(open, line);
 
-        auto& indices = mesh.indices;
+        auto &indices = mesh.indices;
 
         std::getline(open, line, '}');
         line = line.substr(2);
         std::stringstream stream;
         stream << line;
-        for(int i = 0; i < length; i++){
+        for (int i = 0; i < length; i++) {
             std::getline(stream, line, ',');
             indices.push_back(std::stoi(line));
         }
 
-        VertexBuffer& vbh = entity.addComponent<VertexBuffer>();
+        VertexBuffer &vbh = entity.addComponent<VertexBuffer>();
         bgfx::VertexLayout layout;
         layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
-        vbh.vbh = bgfx::createVertexBuffer(bgfx::makeRef(vertices.data(), vertices.size()*3*4), layout);
+        vbh.vbh = bgfx::createVertexBuffer(bgfx::makeRef(vertices.data(), vertices.size() * 12), layout);
 
-        IndexBuffer& ibh = entity.addComponent<IndexBuffer>();
+        IndexBuffer &ibh = entity.addComponent<IndexBuffer>();
         ibh.ibh = bgfx::createIndexBuffer(bgfx::makeRef(indices.data(), indices.size() * 4));
 
         std::getline(open, line);
         std::getline(open, line);
-        std::string vs = line.substr(1,line.length()-2);
-        vs = "../../shaders/" + vs;
+        std::string vs = line.substr(1, line.length() - 2);
 
         std::getline(open, line);
-        std::string fs = line.substr(1, line.length()-2);
-        fs = "../../shaders/" + fs;
+        std::string fs = line.substr(1, line.length() - 2);
 
-        Program& prgm = entity.addComponent<Program>();
+        Program &prgm = entity.addComponent<Program>();
         prgm.programID = loadProgram(vs.c_str(), fs.c_str());
     }
 

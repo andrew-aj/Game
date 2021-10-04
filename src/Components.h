@@ -6,7 +6,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <string>
 #include <GLFW/glfw3.h>
-#include "bgfx_utils.h"
+#include <bx/timer.h>
+#include <bx/math.h>
+#include "bgfxutils.h"
 
 namespace SGE {
     struct Transform {
@@ -53,8 +55,12 @@ namespace SGE {
         Mesh* mesh;
     };
 
+    struct Vertex{
+        float x, y, z;
+    };
+
     struct MeshComponent{
-        std::vector<float[3]> vertices;
+        std::vector<Vertex> vertices;
         std::vector<int> indices;
     };
 
@@ -68,6 +74,11 @@ namespace SGE {
 
     struct IndexBuffer{
         bgfx::IndexBufferHandle ibh;
+    };
+
+    struct Time{
+        int64_t time = bx::getHPCounter();
+        int64_t dtimeNS = 1;
     };
 }
 

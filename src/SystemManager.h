@@ -35,6 +35,12 @@ namespace SGE {
             for (auto &it : priorityQueue) {
                 delete it.second;
             }
+            for (auto &it : startUpQueue) {
+                delete it.second;
+            }
+            for (auto &it : shutDownQueue) {
+                delete it.second;
+            }
         }
 
         SystemManager &operator=(SystemManager &&manager) noexcept {
@@ -68,7 +74,19 @@ namespace SGE {
         }
 
         void registerSystem(System *system, unsigned short priority) {
-            priorityQueue.insert(std::make_pair(priority, system));
+            switch (system->flag) {
+                case EngineStart:
+                    startUpQueue.insert(std::make_pair(priority, system));
+                    break;
+                case EngineRunning:
+                    priorityQueue.insert(std::make_pair(priority, system));
+                    break;
+                case EngineStop:
+                    shutDownQueue.insert(std::make_pair(priority, system));
+                    break;
+                default:
+                    break;
+            }
         }
 /*
         template<typename out, typename... Args>
@@ -116,6 +134,10 @@ namespace SGE {
         //Stores both the System and the associated priority value with it
         //0 is highest priority
         std::multimap<unsigned short, System *> priorityQueue;
+
+        std::multimap<unsigned short, System *> startUpQueue;
+
+        std::multimap<unsigned short, System *> shutDownQueue;
 
         entt::registry *m_world;
 
