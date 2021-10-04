@@ -4,6 +4,7 @@
 #include <entt/entt.hpp>
 #include <cassert>
 #include <filesystem>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "ModelLoader.h"
 
@@ -84,16 +85,62 @@ namespace SGE {
 
         bool run(entt::registry *m_world) override {
             auto view = m_world->view<Time, Tag>();
-            for(auto& entity : view){
-                if (m_world->get<Tag>(entity).name == "PhysicsClock"){
-                    auto& component = m_world->get<Time>(entity);
+            for (auto &entity : view) {
+                if (m_world->get<Tag>(entity).name == "PhysicsClock") {
+                    auto &component = m_world->get<Time>(entity);
                     int64_t freq = bx::getHPFrequency();
                     int64_t frameTime = bx::getHPFrequency() - component.time;
-                    component.dtimeNS = frameTime*1000000/freq;
+                    component.dtimeNS = frameTime * 1000000 / freq;
                     component.time = bx::getHPCounter();
                 }
             }
+            return true;
         }
+    };
+
+    class CreateTimer : public System {
+    public:
+        CreateTimer() {
+            flag = EngineStart;
+        }
+
+        bool run(entt::registry *m_world) override {
+            entt::entity entity = m_world->create();
+            m_world->emplace_or_replace<Tag>(entity, "PhysicsClock");
+            m_world->emplace_or_replace<Time>(entity);
+            return true;
+        }
+    };
+
+    class Camera : public System {
+    public:
+
+        bool run(entt::registry *m_world) override {
+            if (camera == entt::null){
+                m_world->emplace_or_replace<CameraComponent>(camera);
+                auto& comp = m_world->emplace_or_replace<Transform>(camera);
+                comp.position = {0.f, 0.f, 0.f};
+                comp.rotation = glm::quatLookAt(glm::vec3(0,0,0), glm::vec3(0, 1, 0));
+                comp.scale = {1, 1, 1};
+            }
+            auto view = m_world->view<WindowPtr>();
+            entt::entity window = view.front();
+            auto view2 = m_world->view<CameraComponent, Transform>();
+            entt::entity c = view2.front();
+            auto& comp = m_world->get<WindowPtr>(window);
+            auto& transform = m_world->get<Transform>(c);
+            float proj[16];
+            int width, height;
+            glfwGetWindowSize(comp.window, &width, &height);
+            bx::mtxProj(proj, 60.0f, float(width)/float(height), 0.1f, 100.0f, bgfx::getCaps()->homogeneousDepth);
+            bgfx::setViewTransform(0, glm::value_ptr(transform.getTransform()), proj);
+
+            bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
+            return true;
+        }
+
+    private:
+        entt::entity camera = entt::null;
     };
 }
 

@@ -80,6 +80,10 @@ namespace SGE {
         int64_t time = bx::getHPCounter();
         int64_t dtimeNS = 1;
     };
+
+    struct CameraComponent{
+
+    };
 }
 
 #endif //VULKAN_COMPONENTS_H
