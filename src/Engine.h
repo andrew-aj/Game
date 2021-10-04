@@ -44,6 +44,8 @@ namespace SGE {
 
         void update();
 
+        void addSystems();
+
     private:
         std::string name;
         uint32_t WIDTH, HEIGHT;
@@ -128,6 +130,8 @@ namespace SGE {
         bgfx::setViewClear(kClearView, BGFX_CLEAR_COLOR);
         bgfx::setViewRect(kClearView, 0, 0, bgfx::BackbufferRatio::Equal);
 
+        addSystems();
+
         return true;
     }
 
@@ -140,6 +144,17 @@ namespace SGE {
             }
             bgfx::frame();
         }
+    }
+
+    void Engine::addSystems() {
+        manager.registerSystem(new MeshModelLoader(), 0);
+        manager.registerSystem(new GraphicsUnloader(), 0);
+        manager.registerSystem(new GameTime(), 0);
+        manager.registerSystem(new CreateTimer(), 0);
+        manager.registerSystem(new Camera(), 10);
+        manager.registerSystem(new UpdateMovement(), 5);
+        manager.registerSystem(new primaryMovement(), 4);
+        manager.registerSystem(new Renderer(), manager.min_priority);
     }
 
 

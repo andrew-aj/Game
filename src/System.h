@@ -212,13 +212,13 @@ namespace SGE {
             if (input->getIsKeyDown(GLFW_KEY_W)) {
                 physComp.velocity += camComp.front;
             }
-            if (input->getIsKeyDown(GLFW_KEY_S)){
+            if (input->getIsKeyDown(GLFW_KEY_S)) {
                 physComp.velocity += camComp.front;
             }
-            if (input->getIsKeyDown(GLFW_KEY_A)){
+            if (input->getIsKeyDown(GLFW_KEY_A)) {
                 physComp.velocity -= camComp.right;
             }
-            if (input->getIsKeyDown(GLFW_KEY_D)){
+            if (input->getIsKeyDown(GLFW_KEY_D)) {
                 physComp.velocity += camComp.right;
             }
             glm::normalize(physComp.velocity);
@@ -231,6 +231,42 @@ namespace SGE {
         float yaw = 0;
         float pitch = 0;
     };
+
+    class Renderer : public System {
+    public:
+        bool run(entt::registry *m_world) override {
+            bgfx::touch(0);
+            {
+                auto view = m_world->view<Transform, VertexBuffer, Program>();
+                for (auto &entity: view) {
+                    glm::mat4 transform = m_world->get<Transform>(entity).getTransform();
+                    bgfx::setTransform(glm::value_ptr(transform));
+
+                    bgfx::setVertexBuffer(0, m_world->get<VertexBuffer>(entity).vbh);
+                    auto index = m_world->try_get<IndexBuffer>(entity);
+                    if (index) {
+                        bgfx::setIndexBuffer(index->ibh);
+                    }
+
+                    bgfx::setState(BGFX_STATE_DEFAULT);
+
+                    bgfx::submit(0, m_world->get<Program>(entity).programID);
+                }
+            }
+
+            //render mesh
+            auto view = m_world->view<Transform, ModelComponent, Program>();
+            for (auto &entity: view) {
+                meshSubmit(m_world->get<ModelComponent>(entity).mesh, 0, m_world->get<Program>(entity).programID,
+                           glm::value_ptr(m_world->get<Transform>(entity).getTransform()), BGFX_STATE_DEFAULT);
+            }
+
+            bgfx::frame();
+            return true;
+        }
+    };
+
+
 }
 
 
