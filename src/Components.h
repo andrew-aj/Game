@@ -82,6 +82,13 @@ namespace SGE {
     };
 
     struct CameraComponent{
+        glm::vec3 position;
+        glm::vec3 front;
+        glm::vec3 up;
+        glm::vec3 right;
+    };
+
+    struct PrimaryController{
 
     };
 }
