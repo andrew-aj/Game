@@ -70,6 +70,7 @@ namespace SGE {
     }
 
     Engine::~Engine() {
+        manager.runShutDown();
         bgfx::shutdown();
         glfwTerminate();
     }
@@ -131,6 +132,7 @@ namespace SGE {
         bgfx::setViewRect(kClearView, 0, 0, bgfx::BackbufferRatio::Equal);
 
         addSystems();
+        manager.runStartUp();
 
         return true;
     }

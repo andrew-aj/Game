@@ -22,7 +22,7 @@ namespace SGE {
         static constexpr unsigned short min_priority = std::numeric_limits<unsigned short>::max();
         static constexpr unsigned short max_priority = std::numeric_limits<unsigned short>::min();
 
-        explicit SystemManager(Scene& scene) {
+        explicit SystemManager(Scene &scene) {
             unsigned int temp = std::thread::hardware_concurrency();
             if (temp > 1 && temp <= 64) {
                 MAX_THREADS = std::thread::hardware_concurrency();
@@ -32,13 +32,13 @@ namespace SGE {
         }
 
         ~SystemManager() {
-            for (auto &it : priorityQueue) {
+            for (auto &it: priorityQueue) {
                 delete it.second;
             }
-            for (auto &it : startUpQueue) {
+            for (auto &it: startUpQueue) {
                 delete it.second;
             }
-            for (auto &it : shutDownQueue) {
+            for (auto &it: shutDownQueue) {
                 delete it.second;
             }
         }
@@ -88,6 +88,7 @@ namespace SGE {
                     break;
             }
         }
+
 /*
         template<typename out, typename... Args>
         void createInitialSystem(std::function<out(Args...)> func, Args... args){
@@ -120,10 +121,24 @@ namespace SGE {
             return tickSystem(currentVal++);
         }
 
-        bool canTick(){
+        bool canTick() {
             if (priorityQueue.find(currentVal) == priorityQueue.end()) {
                 currentVal = 0;
                 return false;
+            }
+            return true;
+        }
+
+        bool runStartUp() {
+            for (auto &systems: startUpQueue) {
+                systems.second->run(m_world);
+            }
+            return true;
+        }
+
+        bool runShutDown() {
+            for (auto &systems: startUpQueue) {
+                systems.second->run(m_world);
             }
             return true;
         }
