@@ -1,0 +1,1 @@
+shaderc.exe -f fs_test.sc -o spirv/fs_test.bin --platform windows --profile spirv --type fragment -i include/
