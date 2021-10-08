@@ -100,31 +100,33 @@ namespace SGE {
             func(args...);
         }*/
 
-        bool tickSystem(unsigned short priority) {
-            assert(priorityQueue.find(priority) != priorityQueue.end());
-            auto systems = priorityQueue.equal_range(priority);
-            std::vector<std::future<bool>> asyncStorage;
-            for (auto it = systems.first; it != systems.second; it++) {
-                std::future<bool> a = std::async(std::launch::async, &System::run, it->second, m_world);
-                asyncStorage.push_back(std::move(a));
-            }
-            for (int i = 0; i < asyncStorage.size(); i++) {
-                if (!asyncStorage[i].get()) {
-                    throw std::runtime_error("Error, system in " + std::to_string(priority) + " priority and index " +
-                                             std::to_string(i) + " failed.");
+        bool runSystems(){
+            auto iterator = priorityQueue.begin();
+            while (iterator != priorityQueue.end()){
+                auto first = iterator->first;
+                iterator++;
+                auto second = iterator->first;
+                while (first == second){iterator++;}
+                iterator--;
+
+                auto systems = priorityQueue.equal_range(iterator->first);
+                std::vector<std::future<bool>> asyncStorage;
+                for (auto it = systems.first; it != systems.second; it++) {
+                    std::future<bool> a;
+                    if (it->second->threadFlag == SingleThread)
+                        a = std::async(std::launch::deferred, &System::run, it->second, m_world);
+                    else
+                        a = std::async(std::launch::async, &System::run, it->second, m_world);
+                    asyncStorage.push_back(std::move(a));
                 }
-            }
-            return true;
-        }
+                for (int i = 0; i < asyncStorage.size(); i++) {
+                    if (!asyncStorage[i].get()) {
+                        throw std::runtime_error("Error, system in " + std::to_string(iterator->first) + " priority and index " +
+                                                 std::to_string(i) + " failed.");
+                    }
+                }
 
-        bool tickSystem() {
-            return tickSystem(currentVal++);
-        }
-
-        bool canTick() {
-            if (priorityQueue.find(currentVal) == priorityQueue.end()) {
-                currentVal = 0;
-                return false;
+                iterator++;
             }
             return true;
         }

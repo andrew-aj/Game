@@ -141,9 +141,7 @@ namespace SGE {
         while(!glfwWindowShouldClose(window)){
             glfwPollEvents();
             bgfx::touch(kClearView);
-            while(manager.canTick()){
-                manager.tickSystem();
-            }
+            manager.runSystems();
             bgfx::frame();
         }
     }
@@ -153,7 +151,7 @@ namespace SGE {
         manager.registerSystem(new GraphicsUnloader(), 0);
         manager.registerSystem(new GameTime(), 0);
         manager.registerSystem(new CreateTimer(), 0);
-        manager.registerSystem(new Camera(), 10);
+        manager.registerSystem(new Camera(&m_scene.m_world), 10);
         manager.registerSystem(new UpdateMovement(), 5);
         manager.registerSystem(new primaryMovement(), 4);
         manager.registerSystem(new Renderer(), manager.min_priority);

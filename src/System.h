@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
 #include <execution>
+#include <iostream>
 
 #include "ModelLoader.h"
 #include "Input.h"
@@ -18,11 +19,17 @@ namespace SGE {
         EngineStop
     };
 
+    enum ThreadFlag {
+        MultiThread,
+        SingleThread
+    };
+
     class System {
     public:
         virtual bool run(entt::registry *m_world) = 0;
 
         SystemFlag flag = EngineRunning;
+        ThreadFlag threadFlag = MultiThread;
     };
 
     void windowSizeUpdate(entt::registry &m_world, int width, int height) {
@@ -44,7 +51,8 @@ namespace SGE {
             ModelLoader modelLoader(m_world);
             for (const auto &entry: std::filesystem::directory_iterator(path)) {
                 std::string fileName = entry.path().filename().string();
-                if (fileName.find("example"))
+                bool found = fileName.find("example") != std::string::npos;
+                if (fileName.find("example") != std::string::npos)
                     continue;
                 modelLoader.loadMesh(fileName);
             }
@@ -56,6 +64,7 @@ namespace SGE {
     public:
         GraphicsUnloader() {
             flag = EngineStop;
+            threadFlag = SingleThread;
         }
 
         bool run(entt::registry *m_world) override {
@@ -117,18 +126,21 @@ namespace SGE {
 
     class Camera : public System {
     public:
+        Camera(entt::registry *m_world){
+            camera = m_world->create();
+            auto &comp = m_world->emplace_or_replace<CameraComponent>(camera);
+            auto &comp2 = m_world->emplace_or_replace<Transform>(camera);
+            m_world->emplace_or_replace<PrimaryController>(camera);
+            m_world->emplace_or_replace<Physics>(camera);
+            comp.position = {0.f, 0.f, 0.f};
+            comp2.position = comp.position;
+            comp.front = {0, 0, -1.f};
+            comp.up = {0, 1, 0};
+
+            threadFlag = SingleThread;
+        }
 
         bool run(entt::registry *m_world) override {
-            if (camera == entt::null) {
-                auto &comp = m_world->emplace_or_replace<CameraComponent>(camera);
-                auto &comp2 = m_world->emplace_or_replace<Transform>(camera);
-                m_world->emplace_or_replace<PrimaryController>(camera);
-                m_world->emplace_or_replace<Physics>(camera);
-                comp.position = {0.f, 0.f, 0.f};
-                comp2.position = comp.position;
-                comp.front = {0, 0, -1.f};
-                comp.up = {0, 1, 0};
-            }
             auto view = m_world->view<WindowPtr>();
             entt::entity window = view.front();
             auto view2 = m_world->view<CameraComponent, Transform>();
@@ -234,6 +246,10 @@ namespace SGE {
 
     class Renderer : public System {
     public:
+        Renderer(){
+            threadFlag = SingleThread;
+        }
+
         bool run(entt::registry *m_world) override {
             bgfx::touch(0);
             {

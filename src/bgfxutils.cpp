@@ -1,6 +1,6 @@
 #include "bgfxutils.h"
 
-std::shared_ptr<FileReader> reader;
+std::shared_ptr<FileReader> reader = std::make_shared<FileReader>();
 
 bx::FileReaderI* getFileReader(){
     return reader.get();

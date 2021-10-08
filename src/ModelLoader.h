@@ -52,7 +52,7 @@ namespace SGE {
         result.addComponent<Tag>(line);
 
         std::getline(open, line);
-        if (line.find("true")) {
+        if (line.find("true") != std::string::npos) {
             handleModel(result, open);
         } else {
             handleMesh(result, open);
@@ -75,8 +75,11 @@ namespace SGE {
 
         std::string line;
         std::getline(open, line);
+
+        std::getline(open, line);
         line = line.substr(1, line.length() - 2);
-        mesh.vertices.reserve(std::stoi(line));
+        int verticesCount = std::stoi(line);
+        mesh.vertices.reserve(verticesCount);
 
         std::getline(open, line);
         line = line.substr(1, line.length() - 2);
@@ -85,10 +88,11 @@ namespace SGE {
 
         std::getline(open, line, '}');
         auto &vertices = mesh.vertices;
+        int count = 0;
         while (line.length() > 1) {
             int loc = line.find('{');
             while (loc >= 0) {
-                line = line.substr(loc);
+                line = line.substr(loc+1);
                 loc = line.find('{');
             }
 
@@ -107,6 +111,10 @@ namespace SGE {
             vertex.z = std::stof(line);
 
             vertices.push_back(vertex);
+
+            count++;
+            if (count == verticesCount)
+                break;
 
             std::getline(open, line, ',');
             std::getline(open, line, '}');
