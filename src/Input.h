@@ -5,12 +5,18 @@
 #include <vector>
 #include <map>
 #include <functional>
+#include <iostream>
 
 namespace SGE {
 
     class Input {
     public:
-        Input(const std::vector<int>& keysToMonitor, const std::vector<int>& mouseButtonsToMonitor);
+        bool xposUpdate = false;
+        bool yposUpdate = false;
+
+        Input(const std::vector<int> &keysToMonitor, const std::vector<int> &mouseButtonsToMonitor);
+
+        Input(const std::vector<int> &keysToMonitor);
 
         ~Input();
 
@@ -31,6 +37,7 @@ namespace SGE {
         static void setUpMouseButton(GLFWwindow *window);
 
         static void setUpScroll(GLFWwindow *window);
+
     private:
         static void callBack(GLFWwindow *window, int key, int scancode, int action, int mods);
 
@@ -57,7 +64,8 @@ namespace SGE {
 
     std::vector<Input *> Input::_instances;
 
-    Input::Input(const std::vector<int>& keysToMonitor, const std::vector<int>& mouseButtonsToMonitor) : _isEnabled(true) {
+    Input::Input(const std::vector<int> &keysToMonitor, const std::vector<int> &mouseButtonsToMonitor) : _isEnabled(
+            true) {
         for (int key : keysToMonitor) {
             _keys[key] = false;
         }
@@ -66,6 +74,8 @@ namespace SGE {
         }
         _instances.push_back(this);
     }
+
+    Input::Input(const std::vector<int> &keysToMonitor) : Input(keysToMonitor, {}) {}
 
     Input::~Input() {
         _instances.erase(std::remove(_instances.begin(), _instances.end(), this), Input::_instances.end());
@@ -129,9 +139,19 @@ namespace SGE {
 
     void Input::mouseCallBack(GLFWwindow *window, double xpos, double ypos) {
         for (auto input : _instances) {
-            input->firstMouse = false;
-            input->xOffset = xpos - input->lastX;
-            input->yOffset = ypos - input->lastY;
+            if (input->firstMouse) {
+                input->lastX = xpos;
+                input->lastY = ypos;
+                input->firstMouse = false;
+            }
+            if (xpos != input->lastX) {
+                input->xOffset = xpos - input->lastX;
+                input->xposUpdate = true;
+            }
+            if (ypos != input->lastY) {
+                input->yOffset = ypos - input->lastY;
+                input->yposUpdate = true;
+            }
             input->lastX = xpos;
             input->lastY = ypos;
         }

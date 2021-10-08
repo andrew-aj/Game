@@ -1,6 +1,6 @@
 $input v_color0
 
-#include "include/common.sh"
+#include "common.sh"
 
 void main()
 {

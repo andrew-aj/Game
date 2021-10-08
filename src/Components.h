@@ -12,9 +12,9 @@
 
 namespace SGE {
     struct Transform {
-        glm::vec3 position;
-        glm::quat rotation;
-        glm::vec3 scale;
+        glm::vec3 position = {0, 0, 0};
+        glm::quat rotation = {0, 0, 0, 0};
+        glm::vec3 scale = {1, 1, 1};
 
         Transform() = default;
 
@@ -41,6 +41,7 @@ namespace SGE {
     struct WindowPtr {
         GLFWwindow *window;
         bool sizeChange = false;
+        bool running = true;
     };
 
     struct UIComponent {
@@ -61,7 +62,7 @@ namespace SGE {
 
     struct MeshComponent{
         std::vector<Vertex> vertices;
-        std::vector<int> indices;
+        std::vector<uint16_t> indices;
     };
 
     struct Program{
@@ -77,8 +78,8 @@ namespace SGE {
     };
 
     struct Time{
-        int64_t time = bx::getHPCounter();
-        int64_t dtimeNS = 1;
+        float dt = 0;
+        float lastFrame = 0;
     };
 
     struct CameraComponent{

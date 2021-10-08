@@ -101,10 +101,11 @@ namespace SGE {
         Input::setUpScroll(window);
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, resizeCallback);
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         windowEnt = std::make_shared<Entity>(m_scene.createEntity());
         windowEnt->addComponent<Tag, std::string>("Primary Window");
-        windowEnt->addComponent<WindowPtr>(window, false);
+        windowEnt->addComponent<WindowPtr>(window, false, true);
         return true;
     }
 
@@ -138,10 +139,12 @@ namespace SGE {
     }
 
     void Engine::update(){
-        while(!glfwWindowShouldClose(window)){
+        auto& comp = m_scene.m_world.get<WindowPtr>(windowEnt->operator entt::entity());
+        while(!glfwWindowShouldClose(window) && comp.running){
             glfwPollEvents();
             bgfx::touch(kClearView);
             manager.runSystems();
+            continueProcessing = true;
             bgfx::frame();
         }
     }
@@ -155,6 +158,7 @@ namespace SGE {
         manager.registerSystem(new UpdateMovement(), 5);
         manager.registerSystem(new primaryMovement(), 4);
         manager.registerSystem(new Renderer(), manager.min_priority);
+        manager.registerSystem(new CloseEngine(), 0);
     }
 
 

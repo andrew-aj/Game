@@ -7,4 +7,6 @@
 //[index list {1,2,3,4}]
 //[vertexShader]
 //[fragmentShader]
+//[{x,y,z}]
+//[{euler.x,euler.y,euler.z}]
 //if need to go to next line use semi-colon

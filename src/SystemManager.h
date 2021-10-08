@@ -103,10 +103,17 @@ namespace SGE {
         bool runSystems(){
             auto iterator = priorityQueue.begin();
             while (iterator != priorityQueue.end()){
+                if (!continueProcessing){
+                    break;
+                }
                 auto first = iterator->first;
                 iterator++;
                 auto second = iterator->first;
-                while (first == second){iterator++;}
+                while (first == second){
+                    iterator++;
+                    first = second;
+                    second = iterator->first;
+                }
                 iterator--;
 
                 auto systems = priorityQueue.equal_range(iterator->first);

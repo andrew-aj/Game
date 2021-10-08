@@ -68,6 +68,21 @@ namespace SGE {
         std::getline(open, line);
         line = line.substr(1, line.length() - 2);
         model.mesh = meshLoad(line.c_str());
+
+        std::getline(open, line);
+        line = line.substr(2, line.length()-4);
+        std::stringstream stringstream;
+        stringstream << line;
+        std::getline(stringstream, line, ',');
+        float x = std::stof(line);
+
+        std::getline(stringstream, line, ',');
+        float y = std::stof(line);
+
+        std::getline(stringstream, line);
+        float z = std::stof(line);
+
+        entity.addComponent<Transform>().position = {x, y, z};
     }
 
     void ModelLoader::handleMesh(Entity &entity, std::fstream &open) {
@@ -138,7 +153,7 @@ namespace SGE {
         vbh.vbh = bgfx::createVertexBuffer(bgfx::makeRef(vertices.data(), vertices.size() * 12), layout);
 
         IndexBuffer &ibh = entity.addComponent<IndexBuffer>();
-        ibh.ibh = bgfx::createIndexBuffer(bgfx::makeRef(indices.data(), indices.size() * 4));
+        ibh.ibh = bgfx::createIndexBuffer(bgfx::makeRef(indices.data(), indices.size() * 2));
 
         std::getline(open, line);
         std::getline(open, line);
@@ -149,6 +164,21 @@ namespace SGE {
 
         Program &prgm = entity.addComponent<Program>();
         prgm.programID = loadProgram(vs.c_str(), fs.c_str());
+
+        std::getline(open, line);
+        line = line.substr(2, line.length()-4);
+        std::stringstream stringstream;
+        stringstream << line;
+        std::getline(stringstream, line, ',');
+        float x = std::stof(line);
+
+        std::getline(stringstream, line, ',');
+        float y = std::stof(line);
+
+        std::getline(stringstream, line);
+        float z = std::stof(line);
+
+        entity.addComponent<Transform>().position = {x, y, z};
     }
 
 }

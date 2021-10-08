@@ -7,11 +7,14 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <execution>
 #include <iostream>
+#include <atomic>
 
 #include "ModelLoader.h"
 #include "Input.h"
 
 namespace SGE {
+
+    std::atomic<bool> continueProcessing = true;
 
     enum SystemFlag {
         EngineStart,
@@ -92,6 +95,7 @@ namespace SGE {
     public:
         GameTime() {
             flag = EngineRunning;
+            lastTime = glfwGetTime();
         }
 
         bool run(entt::registry *m_world) override {
@@ -99,14 +103,28 @@ namespace SGE {
             for (auto &entity: view) {
                 if (m_world->get<Tag>(entity).name == "PhysicsClock") {
                     auto &component = m_world->get<Time>(entity);
-                    int64_t freq = bx::getHPFrequency();
-                    int64_t frameTime = bx::getHPFrequency() - component.time;
-                    component.dtimeNS = frameTime * 1000000 / freq;
-                    component.time = bx::getHPCounter();
+                    float currentFrame = glfwGetTime();
+                    component.dt = currentFrame - component.lastFrame;
+                    component.lastFrame = currentFrame;
+
+                    frames++;
+                    if (glfwGetTime() - lastTime >= 1.0) {
+                        if (frames / (glfwGetTime() - lastTime) > 60) {
+                            continueProcessing = false;
+                            std::cout << "1 " << frames / (glfwGetTime() - lastTime) << std::endl;
+                            std::cout << "2 " << 1/ component.dt << std::endl;
+                        }
+                        frames = 0;
+                        lastTime = glfwGetTime();
+                    }
                 }
             }
             return true;
         }
+
+    private:
+        double lastTime = 0;
+        int frames = 0;
     };
 
     class CreateTimer : public System {
@@ -126,7 +144,7 @@ namespace SGE {
 
     class Camera : public System {
     public:
-        Camera(entt::registry *m_world){
+        Camera(entt::registry *m_world) {
             camera = m_world->create();
             auto &comp = m_world->emplace_or_replace<CameraComponent>(camera);
             auto &comp2 = m_world->emplace_or_replace<Transform>(camera);
@@ -167,12 +185,12 @@ namespace SGE {
     class UpdateMovement : public System {
     public:
         bool run(entt::registry *m_world) override {
-            int64_t dt = 0;
+            float dt = 0;
             {
                 auto view = m_world->view<Time, Tag>();
                 for (auto &entity: view) {
                     if (m_world->try_get<Tag>(entity)->name == "PhysicsClock") {
-                        dt = m_world->try_get<Time>(entity)->dtimeNS;
+                        dt = m_world->try_get<Time>(entity)->dt;
                     }
                 }
             }
@@ -180,7 +198,7 @@ namespace SGE {
             for (auto entity: view) {
                 auto &transform = m_world->get<Transform>(entity);
                 auto &physics = m_world->get<Physics>(entity);
-                transform.position += physics.velocity.operator*=(dt);
+                transform.position += (physics.velocity.operator*=(dt));
             }
             return true;
         }
@@ -189,11 +207,7 @@ namespace SGE {
     class primaryMovement : public System {
     public:
         primaryMovement() {
-            input = new Input({GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D}, {});
-        }
-
-        ~primaryMovement() {
-            delete input;
+            input = std::make_unique<Input>(std::vector<int>{GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D});
         }
 
         bool run(entt::registry *m_world) override {
@@ -202,8 +216,17 @@ namespace SGE {
             auto &physComp = m_world->get<Physics>(entity);
             auto &camComp = m_world->get<CameraComponent>(entity);
 
-            yaw += input->getMouseOffset().first;
-            pitch += input->getMouseOffset().second;
+            //std::cout << "yaw " << input->getMouseOffset().first << std::endl;
+            //std::cout << "pitch " << input->getMouseOffset().second << std::endl;
+
+            if (input->xposUpdate) {
+                yaw += input->getMouseOffset().first;
+                input->xposUpdate = false;
+            }
+            if (input->yposUpdate) {
+                pitch += input->getMouseOffset().second;
+                input->yposUpdate = false;
+            }
 
             if (pitch > 89.0f)
                 pitch = 89.0f;
@@ -211,9 +234,12 @@ namespace SGE {
                 pitch = -89.0f;
 
             glm::vec3 dir;
-            dir.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+            /*dir.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
             dir.y = sin(glm::radians(pitch));
-            dir.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+            dir.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));*/
+            dir.x = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+            dir.y = sin(glm::radians(pitch));
+            dir.z = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
             camComp.front = glm::normalize(dir);
 
             camComp.right = glm::normalize(glm::cross(camComp.front, {0, 1, 0}));
@@ -222,7 +248,7 @@ namespace SGE {
             physComp.velocity = {0, 0, 0};
 
             if (input->getIsKeyDown(GLFW_KEY_W)) {
-                physComp.velocity += camComp.front;
+                physComp.velocity -= camComp.front;
             }
             if (input->getIsKeyDown(GLFW_KEY_S)) {
                 physComp.velocity += camComp.front;
@@ -239,14 +265,14 @@ namespace SGE {
         }
 
     private:
-        Input *input;
+        std::unique_ptr<Input> input;
         float yaw = 0;
         float pitch = 0;
     };
 
     class Renderer : public System {
     public:
-        Renderer(){
+        Renderer() {
             threadFlag = SingleThread;
         }
 
@@ -264,7 +290,7 @@ namespace SGE {
                         bgfx::setIndexBuffer(index->ibh);
                     }
 
-                    bgfx::setState(BGFX_STATE_DEFAULT);
+                    bgfx::setState(BGFX_STATE_WRITE_R | BGFX_STATE_WRITE_G | BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A);
 
                     bgfx::submit(0, m_world->get<Program>(entity).programID);
                 }
@@ -280,6 +306,26 @@ namespace SGE {
             bgfx::frame();
             return true;
         }
+    };
+
+    class CloseEngine : public System {
+    public:
+        CloseEngine() {
+            input = std::make_unique<Input>(std::vector<int>{GLFW_KEY_ESCAPE});
+        }
+
+        bool run(entt::registry *m_world) override {
+            if (input->getIsKeyDown(GLFW_KEY_ESCAPE)) {
+                auto view = m_world->view<WindowPtr>();
+                for (auto &&[entity, comp] : view.each()) {
+                    comp.running = false;
+                }
+            }
+            return true;
+        }
+
+    private:
+        std::unique_ptr<Input> input;
     };
 
 
