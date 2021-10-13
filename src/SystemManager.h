@@ -103,9 +103,6 @@ namespace SGE {
         bool runSystems(){
             auto iterator = priorityQueue.begin();
             while (iterator != priorityQueue.end()){
-                if (!continueProcessing){
-                    break;
-                }
                 auto first = iterator->first;
                 iterator++;
                 auto second = iterator->first;

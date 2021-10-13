@@ -144,7 +144,6 @@ namespace SGE {
             glfwPollEvents();
             bgfx::touch(kClearView);
             manager.runSystems();
-            continueProcessing = true;
             bgfx::frame();
         }
     }

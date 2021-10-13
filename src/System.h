@@ -14,8 +14,6 @@
 
 namespace SGE {
 
-    std::atomic<bool> continueProcessing = true;
-
     enum SystemFlag {
         EngineStart,
         EngineRunning,
@@ -106,17 +104,6 @@ namespace SGE {
                     float currentFrame = glfwGetTime();
                     component.dt = currentFrame - component.lastFrame;
                     component.lastFrame = currentFrame;
-
-                    frames++;
-                    if (glfwGetTime() - lastTime >= 1.0) {
-                        if (frames / (glfwGetTime() - lastTime) > 60) {
-                            continueProcessing = false;
-                            std::cout << "1 " << frames / (glfwGetTime() - lastTime) << std::endl;
-                            std::cout << "2 " << 1/ component.dt << std::endl;
-                        }
-                        frames = 0;
-                        lastTime = glfwGetTime();
-                    }
                 }
             }
             return true;
