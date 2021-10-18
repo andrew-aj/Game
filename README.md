@@ -5,6 +5,7 @@ The libraries needed to run this project are:
 <br />[GLFW](https://www.glfw.org/download.html)
 <br />[EnTT](https://github.com/skypjack/entt/releases)
 <br />[GLM](https://github.com/g-truc/glm/releases)
+<br />[YAML](https://github.com/jbeder/yaml-cpp/archive/refs/tags/yaml-cpp-0.7.0.zip)
 
 To install Vulkan, run the sdk and make sure these environment variables are set:
 Vulkan_INCLUDE_DIR, Vulkan_LIBRARY, and VULKAN_SDK.
@@ -29,5 +30,7 @@ the three files for mingw-64 and put them in the lib folder.
 To install EnTT download the library to CMAKE_PREFIX_PATH/EnTT.
 
 To install GLM, download the library to CMAKE_PREFIX_PATH/glm.
+
+To install YAML, download the library to CMAKE_PREFIX_PATH/yaml.
 
 After this, reload your clion and then let the cmake compile and it should work.

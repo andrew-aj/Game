@@ -14,6 +14,7 @@ find_package(OpenGL REQUIRED)
 
 add_subdirectory("${CMAKE_PREFIX_PATH}/bgfx" "${CMAKE_PREFIX_PATH}/bgfx/build")
 add_subdirectory("${CMAKE_PREFIX_PATH}/Boxer" "${CMAKE_PREFIX_PATH}/Boxer/build")
+add_subdirectory("${CMAKE_PREFIX_PATH}/yaml" "${CMAKE_PREFIX_PATH}/yaml/build")
 
 include_directories("src")
 include_directories(${CMAKE_PREFIX_PATH}/GLFW/include)
@@ -30,4 +31,4 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  "../bin")
 
 file(GLOB_RECURSE Vulkan CONFIGURE_DEPENDS "src/*.cpp" "src/*.h" )
 add_executable(Vulkan WIN32 ${Vulkan})
-target_link_libraries(Vulkan ${GLFW} Vulkan::Vulkan ${OpenGL} bgfx Boxer meshoptimizer)
+target_link_libraries(Vulkan ${GLFW} Vulkan::Vulkan ${OpenGL} bgfx Boxer meshoptimizer yaml-cpp)
