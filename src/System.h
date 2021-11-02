@@ -5,12 +5,15 @@
 #include <cassert>
 #include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <execution>
 #include <iostream>
 #include <atomic>
+#include <yaml-cpp/yaml.h>
 
 #include "ModelLoader.h"
 #include "Input.h"
+#include "CustomYaml.h"
 
 namespace SGE {
 
@@ -27,14 +30,18 @@ namespace SGE {
 
     class System {
     public:
-        virtual bool run(entt::registry *m_world) = 0;
+        virtual void setUp(entt::registry *registry, YAML::Node &node) = 0;
+
+        virtual void setUp(entt::registry *registry) = 0;
+
+        virtual bool run() = 0;
 
         SystemFlag flag = EngineRunning;
         ThreadFlag threadFlag = MultiThread;
     };
 
-    void windowSizeUpdate(entt::registry &m_world, int width, int height) {
-        for (auto &&[item, ui]: m_world.view<UIComponent>().each()) {
+    void windowSizeUpdate(entt::registry &m_registry, int width, int height) {
+        for (auto &&[item, ui]: m_registry.view<UIComponent>().each()) {
             if (ui.scalingFunction) {
                 ui.scalingFunction(ui.xTop, ui.yTop, ui.xBottom, ui.yBottom, ui.xScale, ui.yScale, width, height);
             }
@@ -47,18 +54,38 @@ namespace SGE {
             flag = EngineStart;
         }
 
-        bool run(entt::registry *m_world) override {
+        void setUp(entt::registry *registry, YAML::Node &node) override {
+            node = node["MeshModelLoader"];
+            for (auto it = node.begin(); it != node.end(); it++) {
+                translation.insert(std::pair<std::string, entt::entity>(it->second["file"].as<std::string>(),
+                                                                        it->second["id"].as<entt::entity>()));
+            }
+            setUp(registry);
+        }
+
+        void setUp(entt::registry *registry) override {
+            m_registry = registry;
+        }
+
+        bool run() override {
             const std::filesystem::path path{"data/models"};
-            ModelLoader modelLoader(m_world);
+            ModelLoader modelLoader(m_registry);
             for (const auto &entry: std::filesystem::directory_iterator(path)) {
                 std::string fileName = entry.path().filename().string();
                 bool found = fileName.find("example") != std::string::npos;
                 if (fileName.find("example") != std::string::npos)
                     continue;
-                modelLoader.loadMesh(fileName);
+                for (auto it = translation.find(fileName); it != translation.end(); it = translation.find(fileName)) {
+                    modelLoader.loadMesh(fileName, it->second);
+                    translation.erase(it);
+                }
             }
             return true;
         }
+
+    private:
+        entt::registry *m_registry;
+        std::multimap<std::string, entt::entity> translation;
     };
 
     class GraphicsUnloader : public System {
@@ -68,25 +95,36 @@ namespace SGE {
             threadFlag = SingleThread;
         }
 
-        bool run(entt::registry *m_world) override {
-            for (auto &&[item, program]: m_world->view<Program>().each()) {
+        void setUp(entt::registry *registry, YAML::Node &node) override {
+            setUp(registry);
+        }
+
+        void setUp(entt::registry *registry) override {
+            m_registry = registry;
+        }
+
+        bool run() override {
+            for (auto &&[item, program]: m_registry->view<Program>().each()) {
                 bgfx::destroy(program.programID);
             }
 
-            for (auto &&[item, mesh]: m_world->view<ModelComponent>().each()) {
+            for (auto &&[item, mesh]: m_registry->view<ModelComponent>().each()) {
                 meshUnload(mesh.mesh);
             }
 
-            for (auto &&[item, vertex]: m_world->view<VertexBuffer>().each()) {
+            for (auto &&[item, vertex]: m_registry->view<VertexBuffer>().each()) {
                 bgfx::destroy(vertex.vbh);
             }
 
-            for (auto &&[item, index]: m_world->view<IndexBuffer>().each()) {
+            for (auto &&[item, index]: m_registry->view<IndexBuffer>().each()) {
                 bgfx::destroy(index.ibh);
             }
 
             return true;
         }
+
+    private:
+        entt::registry *m_registry;
     };
 
     class GameTime : public System {
@@ -96,165 +134,243 @@ namespace SGE {
             lastTime = glfwGetTime();
         }
 
-        bool run(entt::registry *m_world) override {
-            auto view = m_world->view<Time, Tag, Physics>();
-            for (auto &entity: view) {
-                if (m_world->get<Tag>(entity).name == "PhysicsClock") {
-                    auto &component = m_world->get<Time>(entity);
-                    float currentFrame = glfwGetTime();
-                    component.dt = currentFrame - component.lastFrame;
-                    component.lastFrame = currentFrame;
-                }
-            }
+        void setUp(entt::registry *registry, YAML::Node &node) override {
+            entity = node["GameTime"]["timer"].as<entt::entity>();
+            setUp(registry);
+        }
+
+        void setUp(entt::registry *registry) override {
+            m_registry = registry;
+        }
+
+        bool run() override {
+            auto &component = m_registry->get<Time>(entity);
+            float currentFrame = glfwGetTime();
+            component.dt = currentFrame - component.lastFrame;
+            component.lastFrame = currentFrame;
             return true;
         }
 
     private:
-        double lastTime = 0;
+        float lastTime = 0;
         int frames = 0;
+        entt::registry *m_registry;
+        entt::entity entity = entt::null;
     };
 
-    class CreateTimer : public System {
-    public:
-        CreateTimer() {
-            flag = EngineStart;
-        }
-
-        bool run(entt::registry *m_world) override {
-            entt::entity entity = m_world->create();
-            m_world->emplace_or_replace<Tag>(entity, "PhysicsClock");
-            m_world->emplace_or_replace<Time>(entity);
-            m_world->emplace_or_replace<Physics>(entity);
-            return true;
-        }
-    };
+//    class CreateTimer : public System {
+//    public:
+//        CreateTimer() {
+//            flag = EngineStart;
+//        }
+//
+//        void setUp(entt::registry *registry, YAML::Node &node) override {
+//            setUp(registry);
+//        }
+//
+//        void setUp(entt::registry *registry) override {
+//            m_registry = registry;
+//        }
+//
+//        bool run() override {
+//            entt::entity entity = m_registry->create();
+//            m_registry->emplace_or_replace<Tag>(entity, "PhysicsClock");
+//            m_registry->emplace_or_replace<Time>(entity);
+//            m_registry->emplace_or_replace<Physics>(entity);
+//            return true;
+//        }
+//
+//    private:
+//        entt::registry *m_registry;
+//    };
 
     class Camera : public System {
     public:
-        Camera(entt::registry *m_world) {
-            camera = m_world->create();
-            auto &comp = m_world->emplace_or_replace<CameraComponent>(camera);
-            auto &comp2 = m_world->emplace_or_replace<Transform>(camera);
-            m_world->emplace_or_replace<PrimaryController>(camera);
-            m_world->emplace_or_replace<Physics>(camera);
-            comp.position = {0.f, 0.f, 0.f};
-            comp2.position = comp.position;
-            comp.front = {0, 0, -1.f};
-            comp.up = {0, 1, 0};
-
+        Camera() {
             threadFlag = SingleThread;
         }
 
-        bool run(entt::registry *m_world) override {
-            auto view = m_world->view<WindowPtr>();
-            entt::entity window = view.front();
-            auto view2 = m_world->view<CameraComponent, Transform>();
-            entt::entity c = view2.front();
-            auto &comp = m_world->get<WindowPtr>(window);
-            auto &transform = m_world->get<Transform>(c);
-            auto &camComp = m_world->get<CameraComponent>(c);
-            camComp.position = transform.position;
-            float proj[16];
-            int width, height;
-            glfwGetWindowSize(comp.window, &width, &height);
-            bx::mtxProj(proj, 60.0f, float(width) / float(height), 0.1f, 100.0f, bgfx::getCaps()->homogeneousDepth);
-            auto mat = glm::lookAt(camComp.position, camComp.position + camComp.front, camComp.up);
-            bgfx::setViewTransform(0, glm::value_ptr(mat), proj);
+        void setUp(entt::registry *registry, YAML::Node &node) override {
+            camera = node["Camera"]["camera"].as<entt::entity>();
+            window = node["Camera"]["window"].as<entt::entity>();
+            setUp(registry);
+        }
 
+        void setUp(entt::registry *registry) override {
+            m_registry = registry;
+        }
+
+        bool run() override {
+            auto &comp = m_registry->get<WindowPtr>(window);
+            auto &transform = m_registry->get<Transform>(camera);
+            auto &camComp = m_registry->get<CameraComponent>(camera);
+            auto attached = m_registry->get<AttachedTo>(camera).target;
+            if (attached != entt::null) {
+                transform.position = m_registry->get<Transform>(attached).position;
+            }
+            camComp.position = transform.position;
+            std::cout << glm::to_string(camComp.position) << std::endl;
+            int width, height;
+
+            glfwGetWindowSize(comp.window, &width, &height);
+            float ratio = (float) width / (float) height;
+            float half_height = height / 2.f;
+            float half_width = half_height * ratio;
+            auto cameraMtx = glm::translate(glm::mat4(1.0), camComp.position) *
+                             glm::rotate(glm::mat4(1.0), glm::radians(0.0f), glm::vec3(0.f, 0.f, 1.f));
+            cameraMtx = glm::inverse(cameraMtx);
+            float a[16];
+            bx::mtxOrtho(a, -half_width, half_width, -half_height, half_height, 0.0f, 100.f, 0.0f,
+                         bgfx::getCaps()->homogeneousDepth);
+            float zoomed[16];
+            float zoom[16];
+            bx::mtxScale(zoom, 5); //performs a zoom in on the camera.
+            bx::mtxMul(zoomed, a, zoom);
+            bgfx::setViewTransform(0, glm::value_ptr(cameraMtx), zoomed);
             bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
             return true;
         }
 
     private:
         entt::entity camera = entt::null;
+        entt::entity window = entt::null;
+        entt::registry *m_registry;
     };
 
     class UpdateMovement : public System {
     public:
-        bool run(entt::registry *m_world) override {
-            float dt = 0;
-            {
-                auto view = m_world->view<Time, Tag>();
-                for (auto &entity: view) {
-                    if (m_world->try_get<Tag>(entity)->name == "PhysicsClock") {
-                        dt = m_world->try_get<Time>(entity)->dt;
-                    }
-                }
-            }
-            auto view = m_world->view<Physics, Transform>();
+
+        void setUp(entt::registry *registry, YAML::Node &node) override {
+            timer = node["UpdateMovement"]["timer"].as<entt::entity>();
+            setUp(registry);
+        }
+
+        void setUp(entt::registry *registry) override {
+            m_registry = registry;
+        }
+
+        bool run() override {
+            float dt = m_registry->get<Time>(timer).dt;
+            auto view = m_registry->view<Physics, Transform>();
             for (auto entity: view) {
-                auto &transform = m_world->get<Transform>(entity);
-                auto &physics = m_world->get<Physics>(entity);
-                transform.position += (physics.velocity.operator*=(dt));
+                auto &transform = m_registry->get<Transform>(entity);
+                auto &physics = m_registry->get<Physics>(entity);
+                transform.position += (physics.velocity * dt) + 0.5f * physics.acceleration * dt * dt;
+//                physics.velocity += physics.acceleration * dt;
+//                transform.position += (physics.velocity * dt);
             }
             return true;
         }
+
+    private:
+        entt::registry *m_registry;
+        entt::entity timer;
     };
 
     class primaryMovement : public System {
     public:
         primaryMovement() {
-            input = std::make_unique<Input>(std::vector<int>{GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D});
+            input = std::make_unique<Input>(std::vector<int>{GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D},
+                                            std::vector<int>{GLFW_MOUSE_BUTTON_MIDDLE});
         }
 
-        bool run(entt::registry *m_world) override {
-            auto view = m_world->view<PrimaryController>();
-            auto entity = view.front();
-            auto &physComp = m_world->get<Physics>(entity);
-            auto &camComp = m_world->get<CameraComponent>(entity);
-
-            //std::cout << "yaw " << input->getMouseOffset().first << std::endl;
-            //std::cout << "pitch " << input->getMouseOffset().second << std::endl;
-
-            if (input->xposUpdate) {
-                yaw += input->getMouseOffset().first;
-                input->xposUpdate = false;
+        void setUp(entt::registry *registry, YAML::Node &node) override {
+            camera = node["primaryMovement"]["focus"].as<entt::entity>();
+            auto attached = registry->get<AttachedTo>(camera).target;
+            if (attached != entt::null) {
+                trackedObject = attached;
+            } else {
+                detached = true;
             }
-            if (input->yposUpdate) {
-                pitch += input->getMouseOffset().second;
-                input->yposUpdate = false;
+            setUp(registry);
+        }
+
+        void setUp(entt::registry *registry) override {
+            m_registry = registry;
+            observer.connect(*m_registry, entt::collector.update<PrimaryController>());
+        }
+
+        bool run() override {
+//            auto view = m_registry->view<PrimaryController>();
+//            auto entity = view.front();
+            if (!detached) {
+                auto &physComp = m_registry->get<Physics>(trackedObject);
+                if (input->keyIsDown() && !m_registry->any_of<MovementDisabled>(trackedObject)) {
+                    physComp.velocity = {0.0f, 0.0f, 0.0f};
+                    if (input->getIsKeyDown(GLFW_KEY_W)) {
+                        physComp.velocity += glm::vec3(0, 1, 0);
+                    }
+                    if (input->getIsKeyDown(GLFW_KEY_S)) {
+                        physComp.velocity -= glm::vec3(0, 1, 0);
+                    }
+                    if (input->getIsKeyDown(GLFW_KEY_A)) {
+                        physComp.velocity -= glm::vec3(1, 0, 0);
+                    }
+                    if (input->getIsKeyDown(GLFW_KEY_D)) {
+                        physComp.velocity += glm::vec3(1, 0, 0);
+                    }
+                    glm::normalize(physComp.velocity);
+                    physComp.velocity *= 5;
+                }
+            } else {
+                auto &physComp = m_registry->get<Physics>(camera);
+                if (input->keyIsDown() && !m_registry->any_of<MovementDisabled>(camera)) {
+                    physComp.velocity = {0.0f, 0.0f, 0.0f};
+                    if (input->getIsKeyDown(GLFW_KEY_W)) {
+                        physComp.velocity += glm::vec3(0, 1, 0);
+                    }
+                    if (input->getIsKeyDown(GLFW_KEY_S)) {
+                        physComp.velocity -= glm::vec3(0, 1, 0);
+                    }
+                    if (input->getIsKeyDown(GLFW_KEY_A)) {
+                        physComp.velocity -= glm::vec3(1, 0, 0);
+                    }
+                    if (input->getIsKeyDown(GLFW_KEY_D)) {
+                        physComp.velocity += glm::vec3(1, 0, 0);
+                    }
+                    glm::normalize(physComp.velocity);
+                    physComp.velocity *= 5;
+                }
+            }
+//            auto &camComp = m_registry->get<CameraComponent>(camera);
+
+            if (input->getIsMouseButtonDown(GLFW_MOUSE_BUTTON_MIDDLE) && detached) {
+                if (input->xposUpdate) {
+                    dx += input->getMouseOffset().first * 1;
+                    input->xposUpdate = false;
+                }
+                if (input->yposUpdate) {
+                    dy += input->getMouseOffset().second;
+                    input->yposUpdate = false;
+                }
             }
 
-            if (pitch > 89.0f)
-                pitch = 89.0f;
-            if (pitch < -89.0f)
-                pitch = -89.0f;
-
-            glm::vec3 dir;
+//            glm::vec3 dir;
             /*dir.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
             dir.y = sin(glm::radians(pitch));
             dir.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));*/
-            dir.x = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
-            dir.y = sin(glm::radians(pitch));
-            dir.z = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
-            camComp.front = glm::normalize(dir);
+//            dir.x = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+//            dir.y = sin(glm::radians(pitch));
+//            dir.z = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
+//            camComp.front = glm::normalize(dir);
 
-            camComp.right = glm::normalize(glm::cross(camComp.front, {0, 1, 0}));
-            camComp.up = glm::normalize(glm::cross(camComp.right, camComp.front));
+//            camComp.right = glm::normalize(glm::cross({0, 1, 0}, camComp.front));
+//            camComp.up = glm::normalize(glm::cross(camComp.front, camComp.right));
 
-            physComp.velocity = {0, 0, 0};
-
-            if (input->getIsKeyDown(GLFW_KEY_W)) {
-                physComp.velocity -= camComp.front;
-            }
-            if (input->getIsKeyDown(GLFW_KEY_S)) {
-                physComp.velocity += camComp.front;
-            }
-            if (input->getIsKeyDown(GLFW_KEY_A)) {
-                physComp.velocity -= camComp.right;
-            }
-            if (input->getIsKeyDown(GLFW_KEY_D)) {
-                physComp.velocity += camComp.right;
-            }
-            glm::normalize(physComp.velocity);
-            physComp.velocity *= 5;
             return true;
         }
 
     private:
         std::unique_ptr<Input> input;
-        float yaw = 0;
-        float pitch = 0;
+        float dx = 0;
+        float dy = 0;
+
+        entt::entity camera;
+        entt::entity trackedObject;
+        entt::observer observer;
+        entt::registry *m_registry;
+
+        bool detached = false;
     };
 
     class Renderer : public System {
@@ -263,36 +379,46 @@ namespace SGE {
             threadFlag = SingleThread;
         }
 
-        bool run(entt::registry *m_world) override {
+        void setUp(entt::registry *registry, YAML::Node &node) override {
+            setUp(registry);
+        }
+
+        void setUp(entt::registry *registry) override {
+            m_registry = registry;
+        }
+
+        bool run() override {
             bgfx::touch(0);
             {
-                auto view = m_world->view<Transform, VertexBuffer, Program>();
+                auto view = m_registry->view<Transform, VertexBuffer, Program>();
                 for (auto &entity: view) {
-                    glm::mat4 transform = m_world->get<Transform>(entity).getTransform();
+                    glm::mat4 transform = m_registry->get<Transform>(entity).getTransform();
                     bgfx::setTransform(glm::value_ptr(transform));
 
-                    bgfx::setVertexBuffer(0, m_world->get<VertexBuffer>(entity).vbh);
-                    auto index = m_world->try_get<IndexBuffer>(entity);
+                    bgfx::setVertexBuffer(0, m_registry->get<VertexBuffer>(entity).vbh);
+                    auto index = m_registry->try_get<IndexBuffer>(entity);
                     if (index) {
                         bgfx::setIndexBuffer(index->ibh);
                     }
 
                     bgfx::setState(BGFX_STATE_WRITE_R | BGFX_STATE_WRITE_G | BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A);
-
-                    bgfx::submit(0, m_world->get<Program>(entity).programID);
+                    bgfx::submit(0, m_registry->get<Program>(entity).programID);
                 }
             }
 
             //render mesh
-            auto view = m_world->view<Transform, ModelComponent, Program>();
+            auto view = m_registry->view<Transform, ModelComponent, Program>();
             for (auto &entity: view) {
-                meshSubmit(m_world->get<ModelComponent>(entity).mesh, 0, m_world->get<Program>(entity).programID,
-                           glm::value_ptr(m_world->get<Transform>(entity).getTransform()), BGFX_STATE_DEFAULT);
+                meshSubmit(m_registry->get<ModelComponent>(entity).mesh, 0, m_registry->get<Program>(entity).programID,
+                           glm::value_ptr(m_registry->get<Transform>(entity).getTransform()), BGFX_STATE_DEFAULT);
             }
 
             bgfx::frame();
             return true;
         }
+
+    private:
+        entt::registry *m_registry;
     };
 
     class CloseEngine : public System {
@@ -301,10 +427,18 @@ namespace SGE {
             input = std::make_unique<Input>(std::vector<int>{GLFW_KEY_ESCAPE});
         }
 
-        bool run(entt::registry *m_world) override {
+        void setUp(entt::registry *registry, YAML::Node &node) override {
+            setUp(registry);
+        }
+
+        void setUp(entt::registry *registry) override {
+            m_registry = registry;
+        }
+
+        bool run() override {
             if (input->getIsKeyDown(GLFW_KEY_ESCAPE)) {
-                auto view = m_world->view<WindowPtr>();
-                for (auto &&[entity, comp] : view.each()) {
+                auto view = m_registry->view<WindowPtr>();
+                for (auto &&[entity, comp]: view.each()) {
                     comp.running = false;
                 }
             }
@@ -313,6 +447,7 @@ namespace SGE {
 
     private:
         std::unique_ptr<Input> input;
+        entt::registry *m_registry;
     };
 
 

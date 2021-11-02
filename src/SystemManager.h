@@ -74,6 +74,9 @@ namespace SGE {
         }
 
         void registerSystem(System *system, unsigned short priority) {
+            YAML::Node node = YAML::LoadFile("data/systems/systems.yml");
+            node = node["Systems"];
+            system->setUp(m_world, node);
             switch (system->flag) {
                 case EngineStart:
                     startUpQueue.insert(std::make_pair(priority, system));
@@ -118,9 +121,9 @@ namespace SGE {
                 for (auto it = systems.first; it != systems.second; it++) {
                     std::future<bool> a;
                     if (it->second->threadFlag == SingleThread)
-                        a = std::async(std::launch::deferred, &System::run, it->second, m_world);
+                        a = std::async(std::launch::deferred, &System::run, it->second);
                     else
-                        a = std::async(std::launch::async, &System::run, it->second, m_world);
+                        a = std::async(std::launch::async, &System::run, it->second);
                     asyncStorage.push_back(std::move(a));
                 }
                 for (int i = 0; i < asyncStorage.size(); i++) {
@@ -137,14 +140,14 @@ namespace SGE {
 
         bool runStartUp() {
             for (auto &systems: startUpQueue) {
-                systems.second->run(m_world);
+                systems.second->run();
             }
             return true;
         }
 
         bool runShutDown() {
             for (auto &systems: startUpQueue) {
-                systems.second->run(m_world);
+                systems.second->run();
             }
             return true;
         }

@@ -16,7 +16,7 @@ namespace SGE {
     public:
         ModelLoader(entt::registry *registry);
 
-        entt::entity loadMesh(const std::string &loc);
+        entt::entity loadMesh(const std::string &loc, entt::entity entity);
 
     private:
         ModelLoader() {
@@ -34,8 +34,8 @@ namespace SGE {
         m_registry = registry;
     }
 
-    entt::entity ModelLoader::loadMesh(const std::string &loc) {
-        Entity result = Entity(m_registry);
+    entt::entity ModelLoader::loadMesh(const std::string &loc, entt::entity entity) {
+        Entity result = Entity(entity, m_registry);
         std::fstream open("data/models/" + loc, std::ios_base::in);
 
         if (open.fail()) {
@@ -69,20 +69,20 @@ namespace SGE {
         line = line.substr(1, line.length() - 2);
         model.mesh = meshLoad(line.c_str());
 
-        std::getline(open, line);
-        line = line.substr(2, line.length()-4);
-        std::stringstream stringstream;
-        stringstream << line;
-        std::getline(stringstream, line, ',');
-        float x = std::stof(line);
+//        std::getline(open, line);
+//        line = line.substr(2, line.length()-4);
+//        std::stringstream stringstream;
+//        stringstream << line;
+//        std::getline(stringstream, line, ',');
+//        float x = std::stof(line);
 
-        std::getline(stringstream, line, ',');
-        float y = std::stof(line);
+//        std::getline(stringstream, line, ',');
+//        float y = std::stof(line);
 
-        std::getline(stringstream, line);
-        float z = std::stof(line);
+//        std::getline(stringstream, line);
+//        float z = std::stof(line);
 
-        entity.addComponent<Transform>().position = {x, y, z};
+//        entity.addComponent<Transform>().position = {x, y, z};
     }
 
     void ModelLoader::handleMesh(Entity &entity, std::fstream &open) {
@@ -165,20 +165,20 @@ namespace SGE {
         Program &prgm = entity.addComponent<Program>();
         prgm.programID = loadProgram(vs.c_str(), fs.c_str());
 
-        std::getline(open, line);
-        line = line.substr(2, line.length()-4);
-        std::stringstream stringstream;
-        stringstream << line;
-        std::getline(stringstream, line, ',');
-        float x = std::stof(line);
-
-        std::getline(stringstream, line, ',');
-        float y = std::stof(line);
-
-        std::getline(stringstream, line);
-        float z = std::stof(line);
-
-        entity.addComponent<Transform>().position = {x, y, z};
+//        std::getline(open, line);
+//        line = line.substr(2, line.length()-4);
+//        std::stringstream stringstream;
+//        stringstream << line;
+//        std::getline(stringstream, line, ',');
+//        float x = std::stof(line);
+//
+//        std::getline(stringstream, line, ',');
+//        float y = std::stof(line);
+//
+//        std::getline(stringstream, line);
+//        float z = std::stof(line);
+//
+//        entity.addComponent<Transform>().position = {x, y, z};
     }
 
 }

@@ -30,6 +30,8 @@ namespace SGE {
 
         bool getIsMouseButtonDown(int key);
 
+        bool keyIsDown();
+
         static void setUpInputs(GLFWwindow *window);
 
         static void setUpMouseInputs(GLFWwindow *window);
@@ -182,6 +184,10 @@ namespace SGE {
         if (it != _mouseButtons.end()) {
             _mouseButtons[key] = isDown;
         }
+    }
+
+    bool Input::keyIsDown() {
+        return !_keys.empty();
     }
 
 }

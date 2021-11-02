@@ -1,7 +1,7 @@
 #include "Engine.h"
 
 int main(){
-    SGE::Engine gameEngine("Strategy Game", 1280, 720);
+    SGE::Engine gameEngine("Testing", 1280, 720);
     if(!gameEngine.createWindow() || !gameEngine.initEngine())
         return -1;
 

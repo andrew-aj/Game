@@ -1,0 +1,21 @@
+---
+Systems:
+  primaryMovement:
+    focus: 1
+  UpdateMovement:
+    timer: 2
+  Camera:
+    camera: 1
+    window: 4
+  GameTime:
+    timer: 2
+  MeshModelLoader:
+    first:
+      id: 3
+      file: entity.dt
+    second:
+      id: 6
+      file: entity.dt
+    third:
+      id: 7
+      file: entity.dt

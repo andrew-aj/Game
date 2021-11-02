@@ -1,0 +1,61 @@
+---
+Entities:
+  Camera:
+    PregenID: 1
+    CameraComponent:
+      position: [ 0.0, 0.0, 0.0 ]
+      front: [ 0.0, 0.0, 1.0 ]
+      up: [ 0.0, 1.0, 0.0 ]
+      right: [ 1.0, 0.0, 0.0 ]
+      smooth: true
+    Transform:
+      position: [ 0.0, 0.0, 0.0 ]
+      rotation: [ 0.0, 0.0, 0.0, 0.0 ]
+      scale: [ 0.0, 0.0, 0.0 ]
+    Physics:
+      velocity: [ 0.0, 0.0, 0.0 ]
+      acceleration: [ 0.0, 0.0, 0.0 ]
+    PrimaryController: true
+    AttachedTo: 3
+  Timer:
+    PregenID: 2
+    Tag: "PhysicsClock"
+    Time:
+      dt: 0.0
+      lastFrame: 0.0
+  Person:
+    PregenID: 3
+    Tag: "Andrew"
+    Transform:
+      position: [ 0.0, 0.0, 0.0 ]
+      rotation: [ 0.0, 0.0, 0.0, 0.0 ]
+      scale: [ 1.0, 1.0, 1.0 ]
+    Physics:
+      velocity: [ 0.0, 0.0, 0.0 ]
+      acceleration: [ 0.0, 0.0, 0.0 ]
+  Person2:
+    PregenID: 6
+    Tag: "Andrew"
+    Transform:
+      position: [ 100.0, 0.0, 0.0 ]
+      rotation: [ 0.0, 0.0, 0.0, 0.0 ]
+      scale: [ 1.0, 1.0, 1.0 ]
+    Physics:
+      velocity: [ 0.0, 0.0, 0.0 ]
+      acceleration: [ 0.0, 0.0, 0.0 ]
+  Person3:
+    PregenID: 7
+    Tag: "Andrew"
+    Transform:
+      position: [ 50.0, 50.0, 0.0 ]
+      rotation: [ 0.0, 0.0, 0.0, 0.0 ]
+      scale: [ 1.0, 1.0, 1.0 ]
+    Physics:
+      velocity: [ 0.0, 0.0, 0.0 ]
+      acceleration: [ 0.0, 0.0, 0.0 ]
+  Window:
+    PregenID: 4
+    Tag: "Primary Window"
+    WindowPtr:
+      sizeChange: false
+      running: true

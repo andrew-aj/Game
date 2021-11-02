@@ -9,11 +9,14 @@
 #include <bx/timer.h>
 #include <bx/math.h>
 #include "bgfxutils.h"
+#include <Entt/entt.hpp>
+#include <glm/gtx/string_cast.hpp>
+#include <iostream>
 
 namespace SGE {
     struct Transform {
         glm::vec3 position = {0, 0, 0};
-        glm::quat rotation = {0, 0, 0, 0};
+        glm::quat rotation = glm::quat({0.f, 0.f,0.f});
         glm::vec3 scale = {1, 1, 1};
 
         Transform() = default;
@@ -28,6 +31,7 @@ namespace SGE {
 
     struct Physics {
         glm::vec3 velocity;
+        glm::vec3 acceleration;
 
         Physics() = default;
 
@@ -49,47 +53,56 @@ namespace SGE {
         int xTop = 0, yTop = 0;
         int xBottom = 0, yBottom = 0;
         //xTop, yTop, xBottom, yBottom, xScale, yScale, width, height
-        std::function<void(int&, int&, int&, int&, float, float, int, int)> scalingFunction;
+        std::function<void(int &, int &, int &, int &, float, float, int, int)> scalingFunction;
     };
 
-    struct ModelComponent{
-        Mesh* mesh;
+    struct ModelComponent {
+        Mesh *mesh;
     };
 
-    struct Vertex{
+    struct Vertex {
         float x, y, z;
     };
 
-    struct MeshComponent{
+    struct MeshComponent {
         std::vector<Vertex> vertices;
         std::vector<uint16_t> indices;
     };
 
-    struct Program{
+    struct Program {
         bgfx::ProgramHandle programID;
     };
 
-    struct VertexBuffer{
+    struct VertexBuffer {
         bgfx::VertexBufferHandle vbh;
     };
 
-    struct IndexBuffer{
+    struct IndexBuffer {
         bgfx::IndexBufferHandle ibh;
     };
 
-    struct Time{
+    struct Time {
         float dt = 0;
         float lastFrame = 0;
     };
 
-    struct CameraComponent{
+    struct CameraComponent {
         glm::vec3 position;
         glm::vec3 front;
         glm::vec3 up;
         glm::vec3 right;
+        bool smooth;
     };
 
-    struct PrimaryController{
+    struct PrimaryController {
+        bool correct = true;
+    };
+
+    struct AttachedTo{
+        entt::entity target = entt::null;
+    };
+
+    struct MovementDisabled{
 
     };
 }
