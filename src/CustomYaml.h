@@ -60,11 +60,12 @@ namespace YAML {
             node.push_back(rhs.up);
             node.push_back(rhs.right);
             node.push_back(rhs.smooth);
+            node.push_back(rhs.zoom);
             return node;
         }
 
         static bool decode(const Node &node, SGE::CameraComponent &rhs) {
-            if (!node.IsMap() || node.size() != 5) {
+            if (!node.IsMap() || node.size() != 6) {
                 return false;
             }
 
@@ -73,6 +74,7 @@ namespace YAML {
             rhs.up = node["up"].as<glm::vec3>();
             rhs.right = node["right"].as<glm::vec3>();
             rhs.smooth = node["smooth"].as<bool>();
+            rhs.zoom = node["zoom"].as<float>();
             return true;
         }
     };

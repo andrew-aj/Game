@@ -22,11 +22,11 @@ namespace SGE {
 
         bool getIsKeyDown(int key);
 
-        std::pair<double, double> getMousePos();
+        static std::pair<double, double> getMousePos();
 
-        std::pair<double, double> getMouseOffset();
+        static std::pair<double, double> getMouseOffset();
 
-        std::pair<double, double> getScroll();
+        static std::pair<double, double> getScroll();
 
         bool getIsMouseButtonDown(int key);
 
@@ -59,12 +59,14 @@ namespace SGE {
         bool _isEnabled;
 
         bool firstMouse = true;
-        double lastX = 0, lastY = 0;
-        double xOffset = 0, yOffset = 0;
-        double xScroll = 0, yScroll = 0;
+        static double lastX, lastY;
+        static double xOffset, yOffset;
+        static double xScroll, yScroll;
     };
 
     std::vector<Input *> Input::_instances;
+
+    double Input::lastX = 0, Input::lastY = 0, Input::xOffset = 0, Input::yOffset = 0, Input::xScroll = 0, Input::yScroll = 0;
 
     Input::Input(const std::vector<int> &keysToMonitor, const std::vector<int> &mouseButtonsToMonitor) : _isEnabled(
             true) {
@@ -103,7 +105,10 @@ namespace SGE {
     }
 
     std::pair<double, double> Input::getScroll() {
-        return {xScroll, yScroll};
+        std::pair<double, double> temp = {xScroll, yScroll};
+        xScroll = 0;
+        yScroll = 0;
+        return temp;
     }
 
     bool Input::getIsMouseButtonDown(int key) {
@@ -166,10 +171,8 @@ namespace SGE {
     }
 
     void Input::scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
-        for (auto input : _instances) {
-            input->xScroll = xoffset;
-            input->yScroll = yoffset;
-        }
+        Input::xScroll = xoffset;
+        Input::yScroll = yoffset;
     }
 
     void Input::setIsKeyDown(int key, bool isDown) {

@@ -92,6 +92,7 @@ namespace SGE {
         glm::vec3 up;
         glm::vec3 right;
         bool smooth;
+        float zoom;
     };
 
     struct PrimaryController {

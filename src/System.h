@@ -46,6 +46,9 @@ namespace SGE {
                 ui.scalingFunction(ui.xTop, ui.yTop, ui.xBottom, ui.yBottom, ui.xScale, ui.yScale, width, height);
             }
         }
+        for (auto &&[item, window] : m_registry.view<WindowPtr>().each()) {
+            window.sizeChange = true;
+        }
     }
 
     class MeshModelLoader : public System {
@@ -146,8 +149,11 @@ namespace SGE {
         bool run() override {
             auto &component = m_registry->get<Time>(entity);
             float currentFrame = glfwGetTime();
-            component.dt = currentFrame - component.lastFrame;
-            component.lastFrame = currentFrame;
+            float dt = currentFrame - component.lastFrame;
+            component.dt = dt;
+            if (dt >= 1 / 60.f) {
+                component.lastFrame = currentFrame;
+            }
             return true;
         }
 
@@ -193,48 +199,71 @@ namespace SGE {
         void setUp(entt::registry *registry, YAML::Node &node) override {
             camera = node["Camera"]["camera"].as<entt::entity>();
             window = node["Camera"]["window"].as<entt::entity>();
+            registry->get<WindowPtr>(window).sizeChange = true;
             setUp(registry);
         }
 
         void setUp(entt::registry *registry) override {
             m_registry = registry;
+            recalculatePosition(registry->get<CameraComponent>(camera).position);
         }
 
         bool run() override {
-            auto &comp = m_registry->get<WindowPtr>(window);
+            auto &windowComponent = m_registry->get<WindowPtr>(window);
             auto &transform = m_registry->get<Transform>(camera);
-            auto &camComp = m_registry->get<CameraComponent>(camera);
+            auto &cameraComponent = m_registry->get<CameraComponent>(camera);
             auto attached = m_registry->get<AttachedTo>(camera).target;
+
             if (attached != entt::null) {
                 transform.position = m_registry->get<Transform>(attached).position;
             }
-            camComp.position = transform.position;
-            std::cout << glm::to_string(camComp.position) << std::endl;
-            int width, height;
+            if (cameraComponent.position != transform.position) {
+                cameraComponent.position = transform.position;
+                recalculatePosition(cameraComponent.position);
+            }
 
-            glfwGetWindowSize(comp.window, &width, &height);
-            float ratio = (float) width / (float) height;
-            float half_height = height / 2.f;
-            float half_width = half_height * ratio;
-            auto cameraMtx = glm::translate(glm::mat4(1.0), camComp.position) *
-                             glm::rotate(glm::mat4(1.0), glm::radians(0.0f), glm::vec3(0.f, 0.f, 1.f));
-            cameraMtx = glm::inverse(cameraMtx);
-            float a[16];
-            bx::mtxOrtho(a, -half_width, half_width, -half_height, half_height, 0.0f, 100.f, 0.0f,
-                         bgfx::getCaps()->homogeneousDepth);
-            float zoomed[16];
-            float zoom[16];
-            bx::mtxScale(zoom, 5); //performs a zoom in on the camera.
-            bx::mtxMul(zoomed, a, zoom);
-            bgfx::setViewTransform(0, glm::value_ptr(cameraMtx), zoomed);
+            if (cameraComponent.zoom != previousZoom) {
+                scale = {0};
+                bx::mtxScale(scale.data(), cameraComponent.zoom); //performs a zoom in on the camera.
+                previousZoom = cameraComponent.zoom;
+            }
+
+            int width, height;
+            if (windowComponent.sizeChange) {
+                glfwGetWindowSize(windowComponent.window, &width, &height);
+                float ratio = (float) width / (float) height;
+                float half_height = height / 2.f;
+                float half_width = half_height * ratio;
+
+                bx::mtxOrtho(ortho.data(), -half_width, half_width, -half_height, half_height, 0.0f, 100.f, 0.0f,
+                             bgfx::getCaps()->homogeneousDepth);
+            }
+
+            bx::mtxMul(scaledOrtho.data(), ortho.data(), scale.data());
+
+            bgfx::setViewTransform(0, glm::value_ptr(cameraMtx), scaledOrtho.data());
+
             bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
+
             return true;
+        }
+
+        void recalculatePosition(glm::vec3 &cameraPos) {
+            cameraMtx = glm::translate(glm::mat4(1.0), cameraPos) *
+                        glm::rotate(glm::mat4(1.0), glm::radians(0.0f), glm::vec3(0.f, 0.f, 1.f));
+
+            cameraMtx = glm::inverse(cameraMtx);
         }
 
     private:
         entt::entity camera = entt::null;
         entt::entity window = entt::null;
         entt::registry *m_registry;
+        std::array<float, 16> ortho{0};
+        std::array<float, 16> scaledOrtho{0};
+        std::array<float, 16> scale{0};
+        glm::mat4 cameraMtx;
+        float previousZoom = 0.f;
     };
 
     class UpdateMovement : public System {
@@ -251,13 +280,15 @@ namespace SGE {
 
         bool run() override {
             float dt = m_registry->get<Time>(timer).dt;
-            auto view = m_registry->view<Physics, Transform>();
-            for (auto entity: view) {
-                auto &transform = m_registry->get<Transform>(entity);
-                auto &physics = m_registry->get<Physics>(entity);
-                transform.position += (physics.velocity * dt) + 0.5f * physics.acceleration * dt * dt;
+            if (dt >= 1 / 60.f) {
+                auto view = m_registry->view<Physics, Transform>();
+                for (auto entity: view) {
+                    auto &transform = m_registry->get<Transform>(entity);
+                    auto &physics = m_registry->get<Physics>(entity);
+                    transform.position += (physics.velocity * dt) + 0.5f * physics.acceleration * dt * dt;
 //                physics.velocity += physics.acceleration * dt;
 //                transform.position += (physics.velocity * dt);
+                }
             }
             return true;
         }
@@ -276,10 +307,8 @@ namespace SGE {
 
         void setUp(entt::registry *registry, YAML::Node &node) override {
             camera = node["primaryMovement"]["focus"].as<entt::entity>();
-            auto attached = registry->get<AttachedTo>(camera).target;
-            if (attached != entt::null) {
-                trackedObject = attached;
-            } else {
+            trackedObject = registry->get<AttachedTo>(camera).target;
+            if (trackedObject == entt::null) {
                 detached = true;
             }
             setUp(registry);
@@ -345,6 +374,15 @@ namespace SGE {
                 }
             }
 
+            auto scrollOffset = Input::getScroll();
+            if (scrollOffset.second != previousScroll){
+                auto& zoom = m_registry->get<CameraComponent>(camera).zoom;
+                zoom += scrollOffset.second;
+                if (zoom < 0)
+                    zoom = 0;
+                previousScroll = scrollOffset.second;
+            }
+
 //            glm::vec3 dir;
             /*dir.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
             dir.y = sin(glm::radians(pitch));
@@ -370,6 +408,7 @@ namespace SGE {
         entt::observer observer;
         entt::registry *m_registry;
 
+        double previousScroll = 0.;
         bool detached = false;
     };
 
@@ -401,7 +440,8 @@ namespace SGE {
                         bgfx::setIndexBuffer(index->ibh);
                     }
 
-                    bgfx::setState(BGFX_STATE_WRITE_R | BGFX_STATE_WRITE_G | BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A);
+                    bgfx::setState(
+                            BGFX_STATE_WRITE_R | BGFX_STATE_WRITE_G | BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A);
                     bgfx::submit(0, m_registry->get<Program>(entity).programID);
                 }
             }
@@ -409,7 +449,8 @@ namespace SGE {
             //render mesh
             auto view = m_registry->view<Transform, ModelComponent, Program>();
             for (auto &entity: view) {
-                meshSubmit(m_registry->get<ModelComponent>(entity).mesh, 0, m_registry->get<Program>(entity).programID,
+                meshSubmit(m_registry->get<ModelComponent>(entity).mesh, 0,
+                           m_registry->get<Program>(entity).programID,
                            glm::value_ptr(m_registry->get<Transform>(entity).getTransform()), BGFX_STATE_DEFAULT);
             }
 

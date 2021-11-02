@@ -8,6 +8,7 @@ Entities:
       up: [ 0.0, 1.0, 0.0 ]
       right: [ 1.0, 0.0, 0.0 ]
       smooth: true
+      zoom: 5.0
     Transform:
       position: [ 0.0, 0.0, 0.0 ]
       rotation: [ 0.0, 0.0, 0.0, 0.0 ]
@@ -37,7 +38,7 @@ Entities:
     PregenID: 6
     Tag: "Andrew"
     Transform:
-      position: [ 100.0, 0.0, 0.0 ]
+      position: [ 5.0, 0.0, 0.0 ]
       rotation: [ 0.0, 0.0, 0.0, 0.0 ]
       scale: [ 1.0, 1.0, 1.0 ]
     Physics:
@@ -47,7 +48,7 @@ Entities:
     PregenID: 7
     Tag: "Andrew"
     Transform:
-      position: [ 50.0, 50.0, 0.0 ]
+      position: [ 10.0, 0.0, 0.0 ]
       rotation: [ 0.0, 0.0, 0.0, 0.0 ]
       scale: [ 1.0, 1.0, 1.0 ]
     Physics:
