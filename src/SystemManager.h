@@ -123,7 +123,7 @@ namespace SGE {
                     if (it->second->threadFlag == SingleThread)
                         a = std::async(std::launch::deferred, &System::run, it->second);
                     else
-                        a = std::async(std::launch::async, &System::run, it->second);
+                        a = std::async(std::launch::deferred, &System::run, it->second);
                     asyncStorage.push_back(std::move(a));
                 }
                 for (int i = 0; i < asyncStorage.size(); i++) {

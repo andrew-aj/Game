@@ -9,12 +9,13 @@
 #define GLFW_EXPOSE_NATIVE_COCOA
 #endif
 
+#define GLFW_INCLUDE_VULKAN
+
+
+
 #include "GLFW/glfw3.h"
 #include "GLFW/glfw3native.h"
 #include "boxer/boxer.h"
-#include "bgfx/bgfx.h"
-#include "bgfx/platform.h"
-#include "bx/bx.h"
 
 #include "Input.h"
 #include "Components.h"
@@ -111,17 +112,6 @@ namespace SGE {
     }
 
     bool Engine::initEngine() {
-        bgfx::renderFrame();
-        bgfx::Init init;
-#if WIN32
-        init.platformData.nwh = glfwGetWin32Window(window);
-#elif MACOS
-        init.platformData.nwh = glfwGetCocoaWindow(window);
-#elif LINUX
-        init.platformData.ndt = glfwGetX11Display();
-        init.platformData.nwh = (void*)(uintptr_t)glfwGetX11Window(window);
-#endif
-
         init.resolution.width = WIDTH;
         init.resolution.height = HEIGHT;
         init.resolution.reset = BGFX_RESET_VSYNC;

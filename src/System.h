@@ -10,6 +10,8 @@
 #include <iostream>
 #include <atomic>
 #include <yaml-cpp/yaml.h>
+#include <psapi.h>
+#include <windows.h>
 
 #include "ModelLoader.h"
 #include "Input.h"
@@ -151,9 +153,9 @@ namespace SGE {
             float currentFrame = glfwGetTime();
             float dt = currentFrame - component.lastFrame;
             component.dt = dt;
-            if (dt >= 1 / 60.f) {
-                component.lastFrame = currentFrame;
-            }
+//            if (dt >= 1 / 60.f) {
+            component.lastFrame = currentFrame;
+//            }
             return true;
         }
 
@@ -281,15 +283,21 @@ namespace SGE {
         bool run() override {
             float dt = m_registry->get<Time>(timer).dt;
             if (dt >= 1 / 60.f) {
-                auto view = m_registry->view<Physics, Transform>();
-                for (auto entity: view) {
-                    auto &transform = m_registry->get<Transform>(entity);
-                    auto &physics = m_registry->get<Physics>(entity);
-                    transform.position += (physics.velocity * dt) + 0.5f * physics.acceleration * dt * dt;
+                std::cout << "jump " << dt << std::endl;
+
+            }
+            PROCESS_MEMORY_COUNTERS_EX pmc;
+            GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS *) &pmc, sizeof(pmc));
+            std::cout << pmc.PrivateUsage << std::endl;
+            auto view = m_registry->view<Physics, Transform>();
+            for (auto entity: view) {
+                auto &transform = m_registry->get<Transform>(entity);
+                auto &physics = m_registry->get<Physics>(entity);
+                transform.position += (physics.velocity * dt) + 0.5f * physics.acceleration * dt * dt;
 //                physics.velocity += physics.acceleration * dt;
 //                transform.position += (physics.velocity * dt);
-                }
             }
+//            }
             return true;
         }
 
@@ -375,8 +383,8 @@ namespace SGE {
             }
 
             auto scrollOffset = Input::getScroll();
-            if (scrollOffset.second != previousScroll){
-                auto& zoom = m_registry->get<CameraComponent>(camera).zoom;
+            if (scrollOffset.second != previousScroll) {
+                auto &zoom = m_registry->get<CameraComponent>(camera).zoom;
                 zoom += scrollOffset.second;
                 if (zoom < 0)
                     zoom = 0;

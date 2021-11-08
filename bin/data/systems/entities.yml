@@ -8,7 +8,7 @@ Entities:
       up: [ 0.0, 1.0, 0.0 ]
       right: [ 1.0, 0.0, 0.0 ]
       smooth: true
-      zoom: 5.0
+      zoom: 50.0
     Transform:
       position: [ 0.0, 0.0, 0.0 ]
       rotation: [ 0.0, 0.0, 0.0, 0.0 ]
