@@ -24,7 +24,9 @@ namespace SGE::Vulkan {
 
     using ProgramID = int64_t;
 
+    using ShaderID = int64_t;
 
+    std::map<ShaderID, VkPipeline> shaderMap;
 
     struct QueueFamilyIndices {
         int graphicsFamily = -1;
@@ -118,6 +120,8 @@ namespace SGE::Vulkan {
     void createDescriptorSetLayout();
 
     void createGraphicsPipeline();
+
+    ShaderID createShader(const std::string& shader);
 
     std::vector<char> readFile(const std::string& filename);
 
