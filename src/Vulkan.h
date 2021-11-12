@@ -26,7 +26,8 @@ namespace SGE::Vulkan {
 
     using ShaderID = int64_t;
 
-    std::map<ShaderID, VkPipeline> shaderMap;
+    std::map<ShaderID, std::pair<VkPipeline, VkPipelineLayout>> shaderMap;
+    std::unordered_map<std::string, ShaderID> storedShaders;
 
     struct QueueFamilyIndices {
         int graphicsFamily = -1;
@@ -101,11 +102,11 @@ namespace SGE::Vulkan {
 
     void createSwapChain();
 
-    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
 
-    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
 
-    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
 
     void createImageViews();
 
@@ -115,15 +116,38 @@ namespace SGE::Vulkan {
 
     VkFormat findDepthFormat();
 
-    VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+    VkFormat
+    findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
     void createDescriptorSetLayout();
 
-    void createGraphicsPipeline();
+    ShaderID createShader(const std::string &shader);
 
-    ShaderID createShader(const std::string& shader);
+    template<size_t n>
+    ShaderID createShader(const std::string &shader, VkVertexInputBindingDescription bindingDescription,
+                          std::array<VkVertexInputAttributeDescription, n> attributeDescription);
 
-    std::vector<char> readFile(const std::string& filename);
+    std::vector<char> readFile(const std::string &filename);
+
+    VkShaderModule createShaderModule(const std::vector<char> &code);
+
+    void createCommandPool();
+
+    void createDepthResources();
+
+    void
+    createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format,
+                VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image,
+                VkDeviceMemory &imageMemory);
+
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout,
+                               uint32_t mipLevels);
+
+    bool hasStencilComponent(VkFormat format);
+
+    void createFramebuffers();
+
+    void createTextureSampler();
 
     GLFWwindow *window;
 
@@ -147,8 +171,6 @@ namespace SGE::Vulkan {
 
     VkRenderPass renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
-    VkPipelineLayout pipelineLayout;
-    VkPipeline graphicsPipeline;
 
     VkCommandPool commandPool;
 
