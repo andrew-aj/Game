@@ -51,18 +51,18 @@ namespace SGE::Vulkan {
         createSwapChain();
         createImageViews();
         createRenderPass();
-        createDescriptorSetLayout();
+//        createDescriptorSetLayout();
 //        createGraphicsPipeline();
         createCommandPool();
         createDepthResources();
         createFramebuffers();
 //        createTextureImage();
 //        createTextureImageView();
-        createTextureSampler();
+//        createTextureSampler();
 //        loadModel();
 //        createVertexBuffer();
 //        createIndexBuffer();
-        createUniformBuffers();
+//        createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
         createCommandBuffers();
@@ -639,30 +639,42 @@ namespace SGE::Vulkan {
         throw std::runtime_error("failed to find supported format!");
     }
 
-    void createDescriptorSetLayout() {
+    VkDescriptorSetLayoutBinding
+    createDescriptorBinding(uint32_t binding, VkDescriptorType type, uint32_t count, VkShaderStageFlags flags,
+                            VkSampler *sampler) {
+        VkDescriptorSetLayoutBinding bind = {};
+        bind.binding = binding;
+        bind.descriptorType = type;
+        bind.descriptorCount = count;
+        bind.stageFlags = flags;
+        bind.pImmutableSamplers = sampler;
+        return bind;
+    }
+
+    void createDescriptorSetLayout(std::initializer_list<VkDescriptorSetLayoutBinding> list, ShaderID id) {
         // for projection in vertex shader
-        VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-        uboLayoutBinding.binding = 0;
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        uboLayoutBinding.pImmutableSamplers = nullptr;
+//        VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+//        uboLayoutBinding.binding = 0;
+//        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+//        uboLayoutBinding.descriptorCount = 1;
+//        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+//        uboLayoutBinding.pImmutableSamplers = nullptr;
 
         // for texture in fragment shader
-        VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
-        samplerLayoutBinding.binding = 1;
-        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerLayoutBinding.descriptorCount = 1;
-        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        samplerLayoutBinding.pImmutableSamplers = nullptr;
+//        VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
+//        samplerLayoutBinding.binding = 1;
+//        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+//        samplerLayoutBinding.descriptorCount = 1;
+//        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+//        samplerLayoutBinding.pImmutableSamplers = nullptr;
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
+        std::vector<VkDescriptorSetLayoutBinding> bindings{list};
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
         layoutInfo.pBindings = bindings.data();
 
-        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSets[id]) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor set layout!");
         }
     }
@@ -699,13 +711,14 @@ namespace SGE::Vulkan {
     }
 
 
-    ShaderID createShader(const std::string &shader) {
-        return createShader<3>(shader, Vertex::getBindingDescription(), Vertex::getAttributeDescriptions());
+    ShaderID createShader(const std::string &shader, std::initializer_list<VkDescriptorSetLayoutBinding> list) {
+        return createShader<3>(shader, Vertex::getBindingDescription(), Vertex::getAttributeDescriptions(), list);
     }
 
     template<size_t n>
     ShaderID createShader(const std::string &shader, VkVertexInputBindingDescription bindingDescription,
-                          std::array<VkVertexInputAttributeDescription, n> attributeDescription) {
+                          std::array<VkVertexInputAttributeDescription, n> attributeDescription,
+                          std::initializer_list<VkDescriptorSetLayoutBinding> list) {
         auto found = storedShaders.find(shader);
         if (found != storedShaders.end())
             return found->second;
@@ -844,10 +857,12 @@ namespace SGE::Vulkan {
         dynamicState.dynamicStateCount = 2;
         dynamicState.pDynamicStates = dynamicStates;
 
+        createDescriptorSetLayout(list, id);
+
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+        pipelineLayoutInfo.pSetLayouts = &descriptorSets[id];
 
         if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &shaderMap[id].second) != VK_SUCCESS) {
             throw std::runtime_error("failed to create pipeline layout!");
@@ -1051,28 +1066,29 @@ namespace SGE::Vulkan {
         }
     }
 
-    void createTextureSampler() {
-        VkSamplerCreateInfo samplerInfo = {};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.anisotropyEnable = VK_TRUE;
-        samplerInfo.maxAnisotropy = 16;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias = 0.0f;
-        samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = static_cast<float>(mipLevels);
+//    void createTextureSampler() {
+//        VkSamplerCreateInfo samplerInfo = {};
+//        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+//        samplerInfo.magFilter = VK_FILTER_LINEAR;
+//        samplerInfo.minFilter = VK_FILTER_LINEAR;
+//        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+//        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+//        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+//        samplerInfo.anisotropyEnable = VK_TRUE;
+//        samplerInfo.maxAnisotropy = 16;
+//        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+//        samplerInfo.unnormalizedCoordinates = VK_FALSE;
+//        samplerInfo.compareEnable = VK_FALSE;
+//        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+//        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+//        samplerInfo.mipLodBias = 0.0f;
+//        samplerInfo.minLod = 0.0f;
+//        samplerInfo.maxLod = static_cast<float>(mipLevels);
+//
+//        if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+//            throw std::runtime_error("failed to create texture sampler!");
+//        }
+//    }
 
-        if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create texture sampler!");
-        }
-    }
 
 }

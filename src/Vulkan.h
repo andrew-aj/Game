@@ -17,6 +17,7 @@ const bool enableValidationLayers = true;
 #include <array>
 #include <cstring>
 #include <fstream>
+#include <any>
 
 #include "Components.h"
 
@@ -24,10 +25,15 @@ namespace SGE::Vulkan {
 
     using ProgramID = int64_t;
 
+    using UBOID = int64_t;
+
     using ShaderID = int64_t;
 
     std::map<ShaderID, std::pair<VkPipeline, VkPipelineLayout>> shaderMap;
     std::unordered_map<std::string, ShaderID> storedShaders;
+    std::unordered_map<ShaderID, VkDescriptorSetLayout> descriptorSets;
+    std::map<UBOID, std::pair<VkBuffer, VkDeviceMemory>> uniformBuffers;
+    std::unordered_map<ShaderID, std::vector<UBOID>> uniformBufferMap;
 
     struct QueueFamilyIndices {
         int graphicsFamily = -1;
@@ -119,13 +125,18 @@ namespace SGE::Vulkan {
     VkFormat
     findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
-    void createDescriptorSetLayout();
+    VkDescriptorSetLayoutBinding
+    createDescriptorBinding(uint32_t binding, VkDescriptorType type, uint32_t count, VkShaderStageFlags flags,
+                            VkSampler *sampler = nullptr);
 
-    ShaderID createShader(const std::string &shader);
+    void createDescriptorSetLayout(std::initializer_list<VkDescriptorSetLayoutBinding> list, ShaderID id);
+
+    ShaderID createShader(const std::string &shader, std::initializer_list<VkDescriptorSetLayoutBinding> list);
 
     template<size_t n>
     ShaderID createShader(const std::string &shader, VkVertexInputBindingDescription bindingDescription,
-                          std::array<VkVertexInputAttributeDescription, n> attributeDescription);
+                          std::array<VkVertexInputAttributeDescription, n> attributeDescription,
+                          std::initializer_list<VkDescriptorSetLayoutBinding> list);
 
     std::vector<char> readFile(const std::string &filename);
 
@@ -147,7 +158,29 @@ namespace SGE::Vulkan {
 
     void createFramebuffers();
 
-    void createTextureSampler();
+    //Must pass them in the order you have the layouts numbered
+    template<typename B>
+    void createUniformBuffers(ShaderID id, int layout) {
+        VkDeviceSize bufferSize = sizeof(B);
+        UBOID ID;
+        if (uniformBuffers.empty())
+            ID = 0;
+        else
+            ID = (uniformBuffers.rbegin()->first) + 1;
+
+        createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                     uniformBuffers[ID].first,
+                     uniformBuffers[ID].second);
+
+        auto &list = uniformBufferMap[id];
+        if (layout == list.size())
+            list.push_back(ID);
+        else
+            uniformBufferMap[id].insert(uniformBufferMap[id].begin() + layout, ID);
+    }
+
+//    void createTextureSampler();
 
     GLFWwindow *window;
 
@@ -170,7 +203,7 @@ namespace SGE::Vulkan {
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkRenderPass renderPass;
-    VkDescriptorSetLayout descriptorSetLayout;
+//    VkDescriptorSetLayout descriptorSetLayout;
 
     VkCommandPool commandPool;
 
@@ -183,7 +216,7 @@ namespace SGE::Vulkan {
     VkImageView depthImageView;
 
     VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSets;
+//    std::vector<VkDescriptorSet> descriptorSets;
 
     std::vector<VkCommandBuffer> commandBuffers;
 
