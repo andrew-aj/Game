@@ -674,7 +674,7 @@ namespace SGE::Vulkan {
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
         layoutInfo.pBindings = bindings.data();
 
-        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSets[id]) != VK_SUCCESS) {
+        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayouts[id]) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor set layout!");
         }
     }
@@ -862,7 +862,7 @@ namespace SGE::Vulkan {
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &descriptorSets[id];
+        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayouts[id];
 
         if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &shaderMap[id].second) != VK_SUCCESS) {
             throw std::runtime_error("failed to create pipeline layout!");
@@ -1065,6 +1065,44 @@ namespace SGE::Vulkan {
             }
         }
     }
+
+    void createDescriptorPool(ShaderID id, std::initializer_list<VkDescriptorType> types) {
+        if (descriptorPools.find(id) != descriptorPools.end())
+            return;
+        std::vector<VkDescriptorPoolSize> poolSizes;
+        poolSizes.reserve(types.size());
+        for (auto &type : types) {
+            VkDescriptorPoolSize temp;
+            temp.type = type;
+            temp.descriptorCount = swapChainImages.size();
+            poolSizes.push_back(temp);
+        }
+
+        VkDescriptorPoolCreateInfo poolInfo = {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = poolSizes.size();
+        poolInfo.pPoolSizes = poolSizes.data();
+        poolInfo.maxSets = swapChainImages.size();
+
+        if(vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPools[id]) != VK_SUCCESS){
+            throw std::runtime_error("failed t ocreate descriptor pool!");
+        }
+    }
+
+    void createDescriptorSets(ShaderID id, VkDescriptorSetLayout& descriptorSetLayout){
+        std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
+        VkDescriptorSetAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = descriptorPool;
+        allocInfo.descriptorSetCount = swapChainImages.size();
+        allocInfo.pSetLayouts = layouts.data();
+
+        descriptorSets[id].resize(swapChainImages.size());
+        if(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSets[id][0]) != VK_SUCCESS){
+            throw std::runtime_error("failed to allcoate descriptor set!");
+        }
+    }
+
 
 //    void createTextureSampler() {
 //        VkSamplerCreateInfo samplerInfo = {};

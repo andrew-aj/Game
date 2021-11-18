@@ -31,9 +31,11 @@ namespace SGE::Vulkan {
 
     std::map<ShaderID, std::pair<VkPipeline, VkPipelineLayout>> shaderMap;
     std::unordered_map<std::string, ShaderID> storedShaders;
-    std::unordered_map<ShaderID, VkDescriptorSetLayout> descriptorSets;
+    std::unordered_map<ShaderID, VkDescriptorSetLayout> descriptorSetLayouts;
     std::map<UBOID, std::pair<VkBuffer, VkDeviceMemory>> uniformBuffers;
     std::unordered_map<ShaderID, std::vector<UBOID>> uniformBufferMap;
+    std::unordered_map<ShaderID, VkDescriptorPool> descriptorPools;
+    std::unordered_map<ShaderID, std::vector<VkDescriptorSet>> descriptorSets;
 
     struct QueueFamilyIndices {
         int graphicsFamily = -1;
@@ -179,6 +181,8 @@ namespace SGE::Vulkan {
         else
             uniformBufferMap[id].insert(uniformBufferMap[id].begin() + layout, ID);
     }
+
+    void createDescriptorPool(ShaderID id, std::initializer_list<VkDescriptorType> types);
 
 //    void createTextureSampler();
 
