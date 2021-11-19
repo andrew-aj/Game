@@ -6,9 +6,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <string>
 #include <GLFW/glfw3.h>
-#include <bx/timer.h>
-#include <bx/math.h>
-#include "bgfxutils.h"
 #include <Entt/entt.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
@@ -44,6 +41,9 @@ namespace SGE {
 
     struct WindowPtr {
         GLFWwindow *window;
+        Diligent::RefCntAutoPtr<Diligent::IRenderDevice> m_Device;
+        Diligent::RefCntAutoPtr<Diligent::IDeviceContext> m_ImmediateContext;
+        Diligent::RefCntAutoPtr<Diligent::ISwapChain> m_SwapChain;
         bool sizeChange = false;
         bool running = true;
     };
