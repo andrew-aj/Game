@@ -1,0 +1,13 @@
+Name: Entity
+Model: false
+ModelName: null
+NumVerts: 4
+NumIndices: 6
+Vertices: [[.5,.5,0.0],[-.5,.5,0.0],[-.5,-.5,0.0],[.5,-.5,0.0]]
+Indices: [3,0,1,1,2,3]
+VertexShader: vs_test
+FragmentShader: fs_test
+Position: [0,0,0]
+Rotation: [0,0,0]
+UseModelViewProj: true
+LayoutElements: ["float32", "3", "float32", "4"]

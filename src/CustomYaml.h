@@ -153,7 +153,7 @@ namespace YAML {
             }
 
             std::string temp = node.Tag();
-            if (node.as<std::string>() == "none"){
+            if (node.as<std::string>() == "none") {
                 rhs = entt::null;
                 return true;
             }
@@ -262,6 +262,34 @@ namespace YAML {
             rhs.yTop = node["yTop"].as<int>();
             rhs.xBottom = node["xBottom"].as<int>();
             rhs.yBottom = node["yBottom"].as<int>();
+            return true;
+        }
+    };
+
+    template<>
+    struct convert<SGE::Vertex> {
+        static Node encode(const SGE::Vertex &rhs) {
+            Node node;
+            node.push_back(rhs.pos.x);
+            node.push_back(rhs.pos.y);
+            node.push_back(rhs.pos.z);
+            node.push_back(rhs.texCoord.x);
+            node.push_back(rhs.texCoord.y);
+            return node;
+        }
+
+        static bool decode(const Node &node, SGE::Vertex &rhs) {
+            if (!node.IsSequence() || node.size() != 5) {
+                return false;
+            }
+
+            rhs.pos.x = node[0].as<float>();
+            rhs.pos.y = node[1].as<float>();
+            rhs.pos.z = node[2].as<float>();
+            rhs.texCoord.x = node[3].as<float>();
+            rhs.texCoord.y = node[4].as<float>();
+            rhs.texCoord.z = node[5].as<float>();
+            rhs.texCoord.w = node[6].as<float>();
             return true;
         }
     };

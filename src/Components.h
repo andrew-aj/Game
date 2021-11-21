@@ -13,7 +13,7 @@
 namespace SGE {
     struct Transform {
         glm::vec3 position = {0, 0, 0};
-        glm::quat rotation = glm::quat({0.f, 0.f,0.f});
+        glm::quat rotation = glm::quat({0.f, 0.f, 0.f});
         glm::vec3 scale = {1, 1, 1};
 
         Transform() = default;
@@ -57,46 +57,15 @@ namespace SGE {
     };
 
     struct ModelComponent {
-        Mesh *mesh;
+        int *mesh;
     };
 
     struct Vertex {
         glm::vec3 pos;
-        glm::vec3 color;
-        glm::vec2 texCoord;
+        glm::vec4 texCoord;
 
-        static VkVertexInputBindingDescription getBindingDescription() {
-            VkVertexInputBindingDescription bindingDescription = {};
-            bindingDescription.binding = 0;
-            bindingDescription.stride = sizeof(Vertex);
-            bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-            return bindingDescription;
-        }
-
-        static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-            std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
-
-            attributeDescriptions[0].binding = 0;
-            attributeDescriptions[0].location = 0;
-            attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-            attributeDescriptions[1].binding = 0;
-            attributeDescriptions[1].location = 1;
-            attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-            attributeDescriptions[2].binding = 0;
-            attributeDescriptions[2].location = 2;
-            attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-            attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-            return attributeDescriptions;
-        }
-
-        bool operator==(const Vertex& other) const {
-            return pos == other.pos && color == other.color && texCoord == other.texCoord;
+        bool operator==(const Vertex &other) const {
+            return pos == other.pos && texCoord == other.texCoord;
         }
     };
 
@@ -106,23 +75,25 @@ namespace SGE {
     };
 
     struct Program {
-        bgfx::ProgramHandle programID;
+        Diligent::RefCntAutoPtr<Diligent::IPipelineState> shaderPointer;
+        Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> shaderBinding;
+    };
+
+    struct ModelViewProjMatrix{
+        Diligent::RefCntAutoPtr<Diligent::IBuffer> vsConstants;
     };
 
     struct VertexBuffer {
-        VkBuffer vertexBuffer;
-        VkDeviceMemory vertexBufferMemory;
+        Diligent::RefCntAutoPtr<Diligent::IBuffer> vertexBuffer;
     };
 
     struct IndexBuffer {
-        VkBuffer indexBuffer;
-        VkDeviceMemory indexBufferMemory;
+        Diligent::RefCntAutoPtr<Diligent::IBuffer> indexBuffer;
     };
 
     struct UniformBufferObject {
         glm::mat4 model;
-        glm::mat4 view;
-        glm::mat4 proj;
+        glm::mat4 viewProj;
     };
 
     struct Time {
@@ -143,11 +114,11 @@ namespace SGE {
         bool correct = true;
     };
 
-    struct AttachedTo{
+    struct AttachedTo {
         entt::entity target = entt::null;
     };
 
-    struct MovementDisabled{
+    struct MovementDisabled {
 
     };
 }

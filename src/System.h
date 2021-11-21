@@ -110,19 +110,19 @@ namespace SGE {
 
         bool run() override {
             for (auto &&[item, program]: m_registry->view<Program>().each()) {
-                bgfx::destroy(program.programID);
+//                bgfx::destroy(program.programID);
             }
 
             for (auto &&[item, mesh]: m_registry->view<ModelComponent>().each()) {
-                meshUnload(mesh.mesh);
+//                meshUnload(mesh.mesh);
             }
 
             for (auto &&[item, vertex]: m_registry->view<VertexBuffer>().each()) {
-                bgfx::destroy(vertex.vbh);
+//                bgfx::destroy(vertex.vbh);
             }
 
             for (auto &&[item, index]: m_registry->view<IndexBuffer>().each()) {
-                bgfx::destroy(index.ibh);
+//                bgfx::destroy(index.ibh);
             }
 
             return true;
@@ -225,8 +225,9 @@ namespace SGE {
             }
 
             if (cameraComponent.zoom != previousZoom) {
-                scale = {0};
-                bx::mtxScale(scale.data(), cameraComponent.zoom); //performs a zoom in on the camera.
+                scale = glm::identity<glm::mat4>();
+                scale = glm::scale(scale, {cameraComponent.zoom, cameraComponent.zoom, cameraComponent.zoom});
+//                bx::mtxScale(scale.data(), cameraComponent.zoom); //performs a zoom in on the camera.
                 previousZoom = cameraComponent.zoom;
             }
 
@@ -237,15 +238,17 @@ namespace SGE {
                 float half_height = height / 2.f;
                 float half_width = half_height * ratio;
 
-                bx::mtxOrtho(ortho.data(), -half_width, half_width, -half_height, half_height, 0.0f, 100.f, 0.0f,
-                             bgfx::getCaps()->homogeneousDepth);
+                ortho = glm::ortho(-half_width, half_width, -half_height, half_height, 0.0f, 100.f);
+//                bx::mtxOrtho(ortho.data(), -half_width, half_width, -half_height, half_height, 0.0f, 100.f, 0.0f,
+//                             bgfx::getCaps()->homogeneousDepth);
             }
 
-            bx::mtxMul(scaledOrtho.data(), ortho.data(), scale.data());
+            scaledOrtho = ortho * scale;
+//            bx::mtxMul(scaledOrtho.data(), ortho.data(), scale.data());
 
-            bgfx::setViewTransform(0, glm::value_ptr(cameraMtx), scaledOrtho.data());
+//            bgfx::setViewTransform(0, glm::value_ptr(cameraMtx), scaledOrtho.data());
 
-            bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
+//            bgfx::setViewRect(0, 0, 0, uint16_t(width), uint16_t(height));
 
             return true;
         }
@@ -261,9 +264,9 @@ namespace SGE {
         entt::entity camera = entt::null;
         entt::entity window = entt::null;
         entt::registry *m_registry;
-        std::array<float, 16> ortho{0};
-        std::array<float, 16> scaledOrtho{0};
-        std::array<float, 16> scale{0};
+        glm::mat4 ortho{0};
+        glm::mat4 scaledOrtho{0};
+        glm::mat4 scale{0};
         glm::mat4 cameraMtx;
         float previousZoom = 0.f;
     };

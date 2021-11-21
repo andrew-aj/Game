@@ -1,12 +1,11 @@
-//[mesh name]
-//[true or false if mesh is bin file or predefined]
-//[if true then bin file name]
-//[number of vertices]
-//[number of triangles]
-//[vertex list{{1,2,3},{4,5,6}}]
-//[index list {1,2,3,4}]
-//[vertexShader]
-//[fragmentShader]
-//[{x,y,z}]
-//[{euler.x,euler.y,euler.z}]
-//if need to go to next line use semi-colon
+//Name: std::string
+//Model: bool
+//ModelName: std::string
+//NumVerts: int
+//NumIndices: int
+//Vertices: std::vector<glm::vec3>
+//Indices: std::vector<unsigned short>
+//VertexShader: std::string
+//FragmentShader: std::String
+//Position: glm::vec3
+//Rotation: glm::vec3
