@@ -1,103 +1,42 @@
 #include "ModelLoader.h"
-#include "Engine.h"
 
 namespace SGE {
+    entt::registry *ModelLoader::m_registry;
+
+    std::unique_ptr<ModelLoader> ModelLoader::modelLoader;
 
     ModelLoader::ModelLoader(entt::registry *registry) {
         m_registry = registry;
     }
 
-    entt::entity ModelLoader::loadMesh(const std::string &loc, entt::entity entity) {
-        Entity result = Entity(entity, m_registry);
-//        std::fstream open("data/models/" + loc, std::ios_base::in);
-        YAML::Node node;
+    bool ModelLoader::loadShader(const std::string &loc) {
+        YAML::Node original;
         try {
-            node = YAML::LoadFile("data/models" + loc);
+            original = YAML::LoadFile("data/models" + loc);
         } catch (YAML::ParserException &e) {
-            std::cout << e.what() << std::endl;
-            return entt::null;
+            boxer::show(e.what(), "Error loading shader");
+            return false;
         }
 
+        YAML::Node node = original["ShaderProgram"];
+        uint32_t id = node["PregenID"].as<uint32_t>();
 
-        //Set name
-        result.addComponent<Tag>(node["Name"].as<std::string>());
-
-        if (node["Model"].as<bool>()) {
-            handleModel(result, node);
-        } else {
-            handleMesh(result, node);
+        if (meshStorage.find(id) == meshStorage.end()) {
+            boxer::show(("You must call loadMesh first for " + loc).c_str(), "Shader Program Error");
+            return false;
         }
-
-        return (entt::entity) result;
-    }
-
-    void ModelLoader::handleModel(Entity &entity, YAML::Node &node) {
-        auto &model = entity.addComponent<ModelComponent>();
-
-//        model.mesh = meshLoad(line.c_str());
-
-//        std::getline(open, line);
-//        line = line.substr(2, line.length()-4);
-//        std::stringstream stringstream;
-//        stringstream << line;
-//        std::getline(stringstream, line, ',');
-//        float x = std::stof(line);
-
-//        std::getline(stringstream, line, ',');
-//        float y = std::stof(line);
-
-//        std::getline(stringstream, line);
-//        float z = std::stof(line);
-
-//        entity.addComponent<Transform>().position = {x, y, z};
-    }
-
-    void ModelLoader::handleMesh(Entity &entity, YAML::Node &node) {
-        auto &mesh = entity.addComponent<MeshComponent>();
-
-        int verticesCount = node["NumVerts"].as<int>();
-        mesh.vertices.reserve(verticesCount);
-
-        int length = node["NumIndices"].as<int>();
-        mesh.indices.reserve(length);
-
-        mesh.vertices = node["Vertices"].as<std::vector<Vertex>>();
-
-        mesh.indices = node["Indices"].as<std::vector<unsigned short>>();
-
-        VertexBuffer &vbh = entity.addComponent<VertexBuffer>();
-        Diligent::BufferDesc VertBuffDesc;
-        VertBuffDesc.Name = entity.getComponent<Tag>().name.c_str();
-        VertBuffDesc.Usage = Diligent::USAGE_IMMUTABLE;
-        VertBuffDesc.BindFlags = Diligent::BIND_VERTEX_BUFFER;
-        VertBuffDesc.Size = mesh.vertices.size() * sizeof(Vertex);
-        Diligent::BufferData VBData;
-        VBData.pData = mesh.vertices.data();
-        VBData.DataSize = mesh.vertices.size() * sizeof(Vertex);
-        Engine::getDevice()->CreateBuffer(VertBuffDesc, &VBData, &vbh.vertexBuffer);
-
-        IndexBuffer &ibh = entity.addComponent<IndexBuffer>();
-        Diligent::BufferDesc IndBuffDesc;
-        IndBuffDesc.Name = entity.getComponent<Tag>().name.c_str();
-        IndBuffDesc.Usage = Diligent::USAGE_IMMUTABLE;
-        IndBuffDesc.BindFlags = Diligent::BIND_INDEX_BUFFER;
-        IndBuffDesc.Size = mesh.indices.size() * sizeof(short);
-        Diligent::BufferData IBData;
-        IBData.pData = mesh.indices.data();
-        IBData.DataSize = mesh.indices.size() * sizeof(short);
-        Engine::getDevice()->CreateBuffer(IndBuffDesc, &IBData, &ibh.indexBuffer);
 
         std::string vs = node["VertexShader"].as<std::string>();
 
         std::string fs = node["FragmentShader"].as<std::string>();
 
-        Program &prgm = entity.addComponent<Program>();
+        Program prgm {programStorage[id].first, programStorage[id].second};
 
         Diligent::GraphicsPipelineStateCreateInfo psoCreateInfo;
-        psoCreateInfo.PSODesc.Name = entity.getComponent<Tag>().name.c_str();
+        psoCreateInfo.PSODesc.Name = loc.c_str();
         psoCreateInfo.PSODesc.PipelineType = Diligent::PIPELINE_TYPE_GRAPHICS;
         psoCreateInfo.GraphicsPipeline.NumRenderTargets = 1;
-        auto &desc = Engine::getSwapChain()->GetDesc();
+        auto &desc = DeviceClass::getSwapChain()->GetDesc();
         psoCreateInfo.GraphicsPipeline.RTVFormats[0] = desc.ColorBufferFormat;
         psoCreateInfo.GraphicsPipeline.DSVFormat = desc.DepthBufferFormat;
         psoCreateInfo.GraphicsPipeline.PrimitiveTopology = Diligent::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -109,7 +48,7 @@ namespace SGE {
         shaderCI.UseCombinedTextureSamplers = true;
 
         Diligent::RefCntAutoPtr<Diligent::IShaderSourceInputStreamFactory> shaderSourceFactory;
-        Engine::getEngineFactory()->CreateDefaultShaderSourceStreamFactory(nullptr, &shaderSourceFactory);
+        DeviceClass::getEngineFactory()->CreateDefaultShaderSourceStreamFactory(nullptr, &shaderSourceFactory);
         shaderCI.pShaderSourceStreamFactory = shaderSourceFactory;
 
         Diligent::RefCntAutoPtr<Diligent::IShader> pVS;
@@ -117,7 +56,7 @@ namespace SGE {
         shaderCI.EntryPoint = "main";
         shaderCI.Desc.Name = vs.c_str();
         shaderCI.FilePath = ("shaders/" + vs + ".vsh").c_str();
-        Engine::getDevice()->CreateShader(shaderCI, &pVS);
+        DeviceClass::getDevice()->CreateShader(shaderCI, &pVS);
         if (node["UseModelViewProj"].as<bool>()) {
             Diligent::BufferDesc cbDesc;
             cbDesc.Name = "Model View Projection Matrix";
@@ -125,7 +64,7 @@ namespace SGE {
             cbDesc.Usage = Diligent::USAGE_DYNAMIC;
             cbDesc.BindFlags = Diligent::BIND_UNIFORM_BUFFER;
             cbDesc.CPUAccessFlags = Diligent::CPU_ACCESS_WRITE;
-            Engine::getDevice()->CreateBuffer(cbDesc, nullptr, &entity.addComponent<ModelViewProjMatrix>().vsConstants);
+            DeviceClass::getDevice()->CreateBuffer(cbDesc, nullptr, &projMatrixStorage[id]);
         }
 
         Diligent::RefCntAutoPtr<Diligent::IShader> pPS;
@@ -133,7 +72,7 @@ namespace SGE {
         shaderCI.EntryPoint = "main";
         shaderCI.Desc.Name = fs.c_str();
         shaderCI.FilePath = ("shader/" + vs + ".psh").c_str();
-        Engine::getDevice()->CreateShader(shaderCI, &pPS);
+        DeviceClass::getDevice()->CreateShader(shaderCI, &pPS);
 
         int size = node["LayoutElements"].size();
         std::vector<Diligent::LayoutElement> layoutElements(size / 2);
@@ -166,33 +105,139 @@ namespace SGE {
         psoCreateInfo.pVS = pVS;
         psoCreateInfo.pPS = pPS;
         psoCreateInfo.PSODesc.ResourceLayout.DefaultVariableType = Diligent::SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
-        Engine::getDevice()->CreateGraphicsPipelineState(psoCreateInfo, &prgm.shaderPointer);
-        if (entity.hasComponent<ModelViewProjMatrix>()) {
+        DeviceClass::getDevice()->CreateGraphicsPipelineState(psoCreateInfo, &prgm.shaderPointer);
+        if (projMatrixStorage.find(id) != projMatrixStorage.end()) {
             prgm.shaderPointer->GetStaticVariableByName(Diligent::SHADER_TYPE_VERTEX, "Constants")->Set(
-                    entity.getComponent<ModelViewProjMatrix>().vsConstants);
+                    projMatrixStorage[id]);
         }
         prgm.shaderPointer->CreateShaderResourceBinding(&prgm.shaderBinding, true);
+        return true;
+    }
 
-        auto &transform = entity.addComponent<Transform>();
-        transform.position = node["Position"].as<glm::vec3>();
-        transform.rotation = glm::quat(node["Rotation"].as<glm::vec3>());
+    ModelLoader *ModelLoader::createInstance(entt::registry *registry) {
+        if (!modelLoader) {
+            modelLoader = std::make_unique<ModelLoader>(registry);
+        }
+        return modelLoader.get();
+    }
 
-//        prgm.programID = loadProgram(vs.c_str(), fs.c_str());
+    ModelLoader *ModelLoader::createInstance() {
+        if (!modelLoader && modelLoader->m_registry == nullptr)
+            return nullptr;
+        else
+            return modelLoader.get();
+    }
 
-//        std::getline(open, line);
-//        line = line.substr(2, line.length()-4);
-//        std::stringstream stringstream;
-//        stringstream << line;
-//        std::getline(stringstream, line, ',');
-//        float x = std::stof(line);
-//
-//        std::getline(stringstream, line, ',');
-//        float y = std::stof(line);
-//
-//        std::getline(stringstream, line);
-//        float z = std::stof(line);
-//
-//        entity.addComponent<Transform>().position = {x, y, z};
+    bool ModelLoader::loadMesh(const std::string &loc) {
+        YAML::Node original;
+        try {
+            original = YAML::LoadFile("data/models" + loc);
+        } catch (YAML::ParserException &e) {
+            boxer::show(e.what(), "Error loading mesh");
+            return false;
+        }
+
+        YAML::Node node = original["Mesh"];
+
+        uint32_t id = node["PregenID"].as<uint32_t>();
+        auto &mesh = meshStorage[id];
+
+        int verticesCount = node["NumVerts"].as<int>();
+        mesh.vertices.reserve(verticesCount);
+
+        int length = node["NumIndices"].as<int>();
+        mesh.indices.reserve(length);
+
+//        mesh.vertices = node["Vertices"].as<std::vector<Vertex>>();
+        std::vector<float> temp = node["Vertices"].as<std::vector<float>>();
+        mesh.vertices;
+
+        mesh.indices = node["Indices"].as<std::vector<unsigned short>>();
+        return true;
+    }
+
+    bool ModelLoader::loadVertexBuffer(const std::string &loc) {
+        YAML::Node original;
+        try {
+            original = YAML::LoadFile("data/models" + loc);
+        } catch (YAML::ParserException &e) {
+            boxer::show(e.what(), "Error loading vertex buffer");
+            return false;
+        }
+
+        YAML::Node node = original["VertexBuffer"];
+        uint32_t id = node["PregenID"].as<uint32_t>();
+
+        if (meshStorage.find(id) == meshStorage.end()) {
+            boxer::show(("You must call loadMesh first for " + loc).c_str(), "Vertex Buffer Error");
+            return false;
+        }
+
+        auto &ref = vbStorage[id];
+        auto &mesh = meshStorage[id];
+        Diligent::BufferDesc VertBuffDesc;
+        VertBuffDesc.Name = loc.c_str();
+        VertBuffDesc.Usage = Diligent::USAGE_IMMUTABLE;
+        VertBuffDesc.BindFlags = Diligent::BIND_VERTEX_BUFFER;
+        VertBuffDesc.Size = mesh.vertices.size() * sizeof(Vertex);
+        Diligent::BufferData VBData;
+        VBData.pData = mesh.vertices.data();
+        VBData.DataSize = mesh.vertices.size() * sizeof(Vertex);
+        DeviceClass::getDevice()->CreateBuffer(VertBuffDesc, &VBData, &ref);
+
+        return true;
+    }
+
+    bool ModelLoader::loadIndexBuffer(const std::string &loc) {
+        YAML::Node original;
+        try {
+            original = YAML::LoadFile("data/models" + loc);
+        } catch (YAML::ParserException &e) {
+            boxer::show(e.what(), "Error loading index buffer");
+            return false;
+        }
+
+        YAML::Node node = original["IndexBuffer"];
+        uint32_t id = node["PregenID"].as<uint32_t>();
+
+        if (meshStorage.find(id) == meshStorage.end()) {
+            boxer::show(("You must call loadMesh first for " + loc).c_str(), "Index Buffer Error");
+            return false;
+        }
+
+        auto &ref = ibStorage[id];
+        auto &mesh = meshStorage[id];
+        Diligent::BufferDesc IndBuffDesc;
+        IndBuffDesc.Name = loc.c_str();
+        IndBuffDesc.Usage = Diligent::USAGE_IMMUTABLE;
+        IndBuffDesc.BindFlags = Diligent::BIND_INDEX_BUFFER;
+        IndBuffDesc.Size = mesh.indices.size() * sizeof(short);
+        Diligent::BufferData IBData;
+        IBData.pData = mesh.indices.data();
+        IBData.DataSize = mesh.indices.size() * sizeof(short);
+        DeviceClass::getDevice()->CreateBuffer(IndBuffDesc, &IBData, &ref);
+
+        return true;
+    }
+
+    MeshComponent &ModelLoader::getMesh(uint32_t id) {
+        return meshStorage[id];
+    }
+
+    VertexBuffer ModelLoader::getVertexBuffer(uint32_t id) {
+        return {vbStorage[id]};
+    }
+
+    IndexBuffer ModelLoader::getIndexBuffer(uint32_t id) {
+        return {ibStorage[id]};
+    }
+
+    Program ModelLoader::getShaderProgram(uint32_t id) {
+        return {programStorage[id].first, programStorage[id].second};
+    }
+
+    ModelViewProjMatrix ModelLoader::getProjectionMatrix(uint32_t id) {
+        return {projMatrixStorage[id]};
     }
 
 }

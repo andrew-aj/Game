@@ -1,6 +1,7 @@
 #ifndef VULKAN_SYSTEM_H
 #define VULKAN_SYSTEM_H
 
+#include "ModelLoader.h"
 #include <entt/entt.hpp>
 #include <cassert>
 #include <filesystem>
@@ -13,7 +14,6 @@
 #include <psapi.h>
 #include <windows.h>
 
-#include "ModelLoader.h"
 #include "Input.h"
 #include "CustomYaml.h"
 
@@ -26,17 +26,17 @@ namespace SGE {
     };
 
     enum ThreadFlag {
-        MultiThread,
-        SingleThread
+        MultiThread = 0,
+        SingleThread = 1
     };
 
     class System {
     public:
-        virtual void setUp(entt::registry *registry, YAML::Node &node) = 0;
+        void setUp(entt::registry *registry, YAML::Node &node);
 
-        virtual void setUp(entt::registry *registry) = 0;
+        void setUp(entt::registry *registry);
 
-        virtual bool run() = 0;
+        bool run();
 
         SystemFlag flag = EngineRunning;
         ThreadFlag threadFlag = MultiThread;
@@ -59,7 +59,7 @@ namespace SGE {
             flag = EngineStart;
         }
 
-        void setUp(entt::registry *registry, YAML::Node &node) override {
+        void setUp(entt::registry *registry, YAML::Node &node) {
             node = node["MeshModelLoader"];
             for (auto it = node.begin(); it != node.end(); it++) {
                 translation.insert(std::pair<std::string, entt::entity>(it->second["file"].as<std::string>(),
@@ -68,20 +68,20 @@ namespace SGE {
             setUp(registry);
         }
 
-        void setUp(entt::registry *registry) override {
+        void setUp(entt::registry *registry) {
             m_registry = registry;
         }
 
-        bool run() override {
+        bool run() {
             const std::filesystem::path path{"data/models"};
-            ModelLoader modelLoader(m_registry);
+            ModelLoader* modelLoader = ModelLoader::createInstance(m_registry);
             for (const auto &entry: std::filesystem::directory_iterator(path)) {
                 std::string fileName = entry.path().filename().string();
                 bool found = fileName.find("example") != std::string::npos;
                 if (fileName.find("example") != std::string::npos)
                     continue;
                 for (auto it = translation.find(fileName); it != translation.end(); it = translation.find(fileName)) {
-                    modelLoader.loadMesh(fileName, it->second);
+                    modelLoader->loadMesh(fileName);
                     translation.erase(it);
                 }
             }
@@ -100,15 +100,15 @@ namespace SGE {
             threadFlag = SingleThread;
         }
 
-        void setUp(entt::registry *registry, YAML::Node &node) override {
+        void setUp(entt::registry *registry, YAML::Node &node) {
             setUp(registry);
         }
 
-        void setUp(entt::registry *registry) override {
+        void setUp(entt::registry *registry) {
             m_registry = registry;
         }
 
-        bool run() override {
+        bool run() {
             for (auto &&[item, program]: m_registry->view<Program>().each()) {
 //                bgfx::destroy(program.programID);
             }
@@ -139,16 +139,16 @@ namespace SGE {
             lastTime = glfwGetTime();
         }
 
-        void setUp(entt::registry *registry, YAML::Node &node) override {
+        void setUp(entt::registry *registry, YAML::Node &node) {
             entity = node["GameTime"]["timer"].as<entt::entity>();
             setUp(registry);
         }
 
-        void setUp(entt::registry *registry) override {
+        void setUp(entt::registry *registry) {
             m_registry = registry;
         }
 
-        bool run() override {
+        bool run() {
             auto &component = m_registry->get<Time>(entity);
             float currentFrame = glfwGetTime();
             float dt = currentFrame - component.lastFrame;
@@ -172,15 +172,15 @@ namespace SGE {
 //            flag = EngineStart;
 //        }
 //
-//        void setUp(entt::registry *registry, YAML::Node &node) override {
+//        void setUp(entt::registry *registry, YAML::Node &node)  {
 //            setUp(registry);
 //        }
 //
-//        void setUp(entt::registry *registry) override {
+//        void setUp(entt::registry *registry)  {
 //            m_registry = registry;
 //        }
 //
-//        bool run() override {
+//        bool run()  {
 //            entt::entity entity = m_registry->create();
 //            m_registry->emplace_or_replace<Tag>(entity, "PhysicsClock");
 //            m_registry->emplace_or_replace<Time>(entity);
@@ -198,19 +198,19 @@ namespace SGE {
             threadFlag = SingleThread;
         }
 
-        void setUp(entt::registry *registry, YAML::Node &node) override {
+        void setUp(entt::registry *registry, YAML::Node &node) {
             camera = node["Camera"]["camera"].as<entt::entity>();
             window = node["Camera"]["window"].as<entt::entity>();
             registry->get<WindowPtr>(window).sizeChange = true;
             setUp(registry);
         }
 
-        void setUp(entt::registry *registry) override {
+        void setUp(entt::registry *registry) {
             m_registry = registry;
             recalculatePosition(registry->get<CameraComponent>(camera).position);
         }
 
-        bool run() override {
+        bool run() {
             auto &windowComponent = m_registry->get<WindowPtr>(window);
             auto &transform = m_registry->get<Transform>(camera);
             auto &cameraComponent = m_registry->get<CameraComponent>(camera);
@@ -274,16 +274,19 @@ namespace SGE {
     class UpdateMovement : public System {
     public:
 
-        void setUp(entt::registry *registry, YAML::Node &node) override {
+        UpdateMovement() {
+        }
+
+        void setUp(entt::registry *registry, YAML::Node &node) {
             timer = node["UpdateMovement"]["timer"].as<entt::entity>();
             setUp(registry);
         }
 
-        void setUp(entt::registry *registry) override {
+        void setUp(entt::registry *registry) {
             m_registry = registry;
         }
 
-        bool run() override {
+        bool run() {
             float dt = m_registry->get<Time>(timer).dt;
             if (dt >= 1 / 60.f) {
                 std::cout << "jump " << dt << std::endl;
@@ -309,14 +312,14 @@ namespace SGE {
         entt::entity timer;
     };
 
-    class primaryMovement : public System {
+    class PrimaryMovement : public System {
     public:
-        primaryMovement() {
+        PrimaryMovement() {
             input = std::make_unique<Input>(std::vector<int>{GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D},
                                             std::vector<int>{GLFW_MOUSE_BUTTON_MIDDLE});
         }
 
-        void setUp(entt::registry *registry, YAML::Node &node) override {
+        void setUp(entt::registry *registry, YAML::Node &node) {
             camera = node["primaryMovement"]["focus"].as<entt::entity>();
             trackedObject = registry->get<AttachedTo>(camera).target;
             if (trackedObject == entt::null) {
@@ -325,12 +328,12 @@ namespace SGE {
             setUp(registry);
         }
 
-        void setUp(entt::registry *registry) override {
+        void setUp(entt::registry *registry) {
             m_registry = registry;
             observer.connect(*m_registry, entt::collector.update<PrimaryController>());
         }
 
-        bool run() override {
+        bool run() {
 //            auto view = m_registry->view<PrimaryController>();
 //            auto entity = view.front();
             if (!detached) {
@@ -429,43 +432,43 @@ namespace SGE {
             threadFlag = SingleThread;
         }
 
-        void setUp(entt::registry *registry, YAML::Node &node) override {
+        void setUp(entt::registry *registry, YAML::Node &node) {
             setUp(registry);
         }
 
-        void setUp(entt::registry *registry) override {
+        void setUp(entt::registry *registry) {
             m_registry = registry;
         }
 
-        bool run() override {
-            bgfx::touch(0);
-            {
-                auto view = m_registry->view<Transform, VertexBuffer, Program>();
-                for (auto &entity: view) {
-                    glm::mat4 transform = m_registry->get<Transform>(entity).getTransform();
-                    bgfx::setTransform(glm::value_ptr(transform));
-
-                    bgfx::setVertexBuffer(0, m_registry->get<VertexBuffer>(entity).vbh);
-                    auto index = m_registry->try_get<IndexBuffer>(entity);
-                    if (index) {
-                        bgfx::setIndexBuffer(index->ibh);
-                    }
-
-                    bgfx::setState(
-                            BGFX_STATE_WRITE_R | BGFX_STATE_WRITE_G | BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A);
-                    bgfx::submit(0, m_registry->get<Program>(entity).programID);
-                }
-            }
-
-            //render mesh
-            auto view = m_registry->view<Transform, ModelComponent, Program>();
-            for (auto &entity: view) {
-                meshSubmit(m_registry->get<ModelComponent>(entity).mesh, 0,
-                           m_registry->get<Program>(entity).programID,
-                           glm::value_ptr(m_registry->get<Transform>(entity).getTransform()), BGFX_STATE_DEFAULT);
-            }
-
-            bgfx::frame();
+        bool run() {
+//            bgfx::touch(0);
+//            {
+//                auto view = m_registry->view<Transform, VertexBuffer, Program>();
+//                for (auto &entity: view) {
+//                    glm::mat4 transform = m_registry->get<Transform>(entity).getTransform();
+//                    bgfx::setTransform(glm::value_ptr(transform));
+//
+//                    bgfx::setVertexBuffer(0, m_registry->get<VertexBuffer>(entity).vbh);
+//                    auto index = m_registry->try_get<IndexBuffer>(entity);
+//                    if (index) {
+//                        bgfx::setIndexBuffer(index->ibh);
+//                    }
+//
+//                    bgfx::setState(
+//                            BGFX_STATE_WRITE_R | BGFX_STATE_WRITE_G | BGFX_STATE_WRITE_B | BGFX_STATE_WRITE_A);
+//                    bgfx::submit(0, m_registry->get<Program>(entity).programID);
+//                }
+//            }
+//
+//            //render mesh
+//            auto view = m_registry->view<Transform, ModelComponent, Program>();
+//            for (auto &entity: view) {
+//                meshSubmit(m_registry->get<ModelComponent>(entity).mesh, 0,
+//                           m_registry->get<Program>(entity).programID,
+//                           glm::value_ptr(m_registry->get<Transform>(entity).getTransform()), BGFX_STATE_DEFAULT);
+//            }
+//
+//            bgfx::frame();
             return true;
         }
 
@@ -479,15 +482,15 @@ namespace SGE {
             input = std::make_unique<Input>(std::vector<int>{GLFW_KEY_ESCAPE});
         }
 
-        void setUp(entt::registry *registry, YAML::Node &node) override {
+        void setUp(entt::registry *registry, YAML::Node &node) {
             setUp(registry);
         }
 
-        void setUp(entt::registry *registry) override {
+        void setUp(entt::registry *registry) {
             m_registry = registry;
         }
 
-        bool run() override {
+        bool run() {
             if (input->getIsKeyDown(GLFW_KEY_ESCAPE)) {
                 auto view = m_registry->view<WindowPtr>();
                 for (auto &&[entity, comp]: view.each()) {

@@ -1,16 +1,9 @@
 #ifndef VULKAN_ENGINE_H
 #define VULKAN_ENGINE_H
 
-#if LINUX
-#define GLFW_EXPOSE_NATIVE_X11
-#elif WIN32
-#define GLFW_EXPOSE_NATIVE_WIN32
-#elif MACOS
-#define GLFW_EXPOSE_NATIVE_COCOA
-#endif
-
 //#define GLFW_INCLUDE_VULKAN
 
+#include "ModelLoader.h"
 #ifndef ENGINE_DLL
 #    define ENGINE_DLL 1
 #endif
@@ -72,6 +65,7 @@
 #    undef CreateWindow
 #endif
 
+#include "Common/interface/RefCntAutoPtr.hpp"
 #include "GLFW/glfw3.h"
 #include "GLFW/glfw3native.h"
 #include "boxer/boxer.h"
@@ -80,14 +74,12 @@
 #include "Graphics/GraphicsEngine/interface/DeviceContext.h"
 #include "Graphics/GraphicsEngine/interface/SwapChain.h"
 
-#include "Common/interface/RefCntAutoPtr.hpp"
 
 #include "Input.h"
 #include "Components.h"
 #include "Scene.h"
 #include "SystemManager.h"
 #include "Entity.h"
-#include "ModelLoader.h"
 
 #include <string>
 #include <cstdint>
@@ -116,22 +108,6 @@ namespace SGE {
 
         void addSystems();
 
-        static Diligent::IRenderDevice *getDevice() {
-            return m_pDevice;
-        }
-
-        static Diligent::IDeviceContext *getContext() {
-            return m_pImmediateContext;
-        }
-
-        static Diligent::ISwapChain *getSwapChain() {
-            return m_pSwapChain;
-        }
-
-        static Diligent::IEngineFactory *getEngineFactory() {
-            return m_pDevice->GetEngineFactory();
-        }
-
     private:
         std::string name;
         uint32_t WIDTH, HEIGHT;
@@ -142,10 +118,6 @@ namespace SGE {
         Scene m_scene;
 
         SystemManager manager = SystemManager(m_scene);
-
-        static Diligent::RefCntAutoPtr<Diligent::IRenderDevice> m_pDevice;
-        static Diligent::RefCntAutoPtr<Diligent::IDeviceContext> m_pImmediateContext;
-        static Diligent::RefCntAutoPtr<Diligent::ISwapChain> m_pSwapChain;
     };
 
     Engine::Engine() : name("Vulkan"), WIDTH(1280), HEIGHT(720) {
@@ -158,11 +130,11 @@ namespace SGE {
     }
 
     Engine::~Engine() {
-        if (m_pImmediateContext)
-            m_pImmediateContext->Flush();
-        m_pSwapChain = nullptr;
-        m_pImmediateContext = nullptr;
-        m_pDevice = nullptr;
+        if (DeviceClass::getContext())
+            DeviceClass::getContext()->Flush();
+        DeviceClass::m_pSwapChain = nullptr;
+        DeviceClass::m_pImmediateContext = nullptr;
+        DeviceClass::m_pDevice = nullptr;
         manager.runShutDown();
         if (window)
             glfwDestroyWindow(window);
@@ -172,8 +144,8 @@ namespace SGE {
     void Engine::resizeCallback(GLFWwindow *window, int width, int height) {
         Engine *engine = static_cast<Engine *>(glfwGetWindowUserPointer(window));
         windowSizeUpdate(engine->m_scene.m_world, width, height);
-        if (engine->m_pSwapChain != nullptr)
-            engine->m_pSwapChain->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        if (DeviceClass::m_pSwapChain != nullptr)
+            DeviceClass::m_pSwapChain->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
     }
 
     bool Engine::createWindow(int glfwAPIHint) {
@@ -268,8 +240,8 @@ namespace SGE {
 
                 Diligent::EngineGLCreateInfo EngineCI;
                 EngineCI.Window = Window;
-                pFactoryOpenGL->CreateDeviceAndSwapChainGL(EngineCI, &m_pDevice, &m_pImmediateContext, desc,
-                                                           &m_pSwapChain);
+                pFactoryOpenGL->CreateDeviceAndSwapChainGL(EngineCI, &DeviceClass::m_pDevice, &DeviceClass::m_pImmediateContext, desc,
+                                                           &DeviceClass::m_pSwapChain);
             }
                 break;
 #endif
@@ -282,8 +254,8 @@ namespace SGE {
                 auto *pFactoryVk = Diligent::GetEngineFactoryVk();
 
                 Diligent::EngineVkCreateInfo EngineCI;
-                pFactoryVk->CreateDeviceAndContextsVk(EngineCI, &m_pDevice, &m_pImmediateContext);
-                pFactoryVk->CreateSwapChainVk(m_pDevice, m_pImmediateContext, desc, Window, &m_pSwapChain);
+                pFactoryVk->CreateDeviceAndContextsVk(EngineCI, &DeviceClass::m_pDevice, &DeviceClass::m_pImmediateContext);
+                pFactoryVk->CreateSwapChainVk(DeviceClass::m_pDevice, DeviceClass::m_pImmediateContext, desc, Window, &DeviceClass::m_pSwapChain);
             }
                 break;
 #endif
@@ -306,7 +278,7 @@ namespace SGE {
                 break;
         }
 
-        if (m_pDevice == nullptr || m_pImmediateContext == nullptr || m_pSwapChain == nullptr)
+        if (DeviceClass::m_pDevice == nullptr || DeviceClass::m_pImmediateContext == nullptr || DeviceClass::m_pSwapChain == nullptr)
             return false;
 
         YAML::Node node = YAML::LoadFile("data/systems/entities.yml");
@@ -316,9 +288,9 @@ namespace SGE {
         entt::entity tempEntt = node["Window"]["PregenID"].as<entt::entity>();
         auto &windPtr = m_scene.m_world.get<WindowPtr>(tempEntt);
         windPtr.window = window;
-        windPtr.m_Device = m_pDevice;
-        windPtr.m_ImmediateContext = m_pImmediateContext;
-        windPtr.m_SwapChain = m_pSwapChain;
+        windPtr.m_Device = DeviceClass::m_pDevice;
+        windPtr.m_ImmediateContext = DeviceClass::m_pImmediateContext;
+        windPtr.m_SwapChain = DeviceClass::m_pSwapChain;
 
         windowEnt = std::make_shared<Entity>(tempEntt, &m_scene.m_world);
         addSystems();
@@ -332,30 +304,29 @@ namespace SGE {
         while (!glfwWindowShouldClose(window) && comp.running) {
             glfwPollEvents();
 
-            Diligent::ITextureView *pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
-            m_pImmediateContext->SetRenderTargets(1, &pRTV, nullptr,
+            Diligent::ITextureView *pRTV = DeviceClass::m_pSwapChain->GetCurrentBackBufferRTV();
+            DeviceClass::m_pImmediateContext->SetRenderTargets(1, &pRTV, nullptr,
                                                   Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
             const float clearColor[4] = {};
-            m_pImmediateContext->ClearRenderTarget(pRTV, clearColor, Diligent::RESOURCE_STATE_TRANSITION_MODE_VERIFY);
+            DeviceClass::m_pImmediateContext->ClearRenderTarget(pRTV, clearColor, Diligent::RESOURCE_STATE_TRANSITION_MODE_VERIFY);
 
             manager.runSystems();
 
-            m_pImmediateContext->Flush();
-            m_pSwapChain->Present();
+            DeviceClass::m_pImmediateContext->Flush();
+            DeviceClass::m_pSwapChain->Present();
         }
     }
 
     void Engine::addSystems() {
-        manager.registerSystem(new MeshModelLoader(), 0);
-        manager.registerSystem(new GraphicsUnloader(), 0);
-        manager.registerSystem(new GameTime(), 0);
-//        manager.registerSystem(new CreateTimer(), 0);
-        manager.registerSystem(new Camera(), 10);
-        manager.registerSystem(new UpdateMovement(), 5);
-        manager.registerSystem(new primaryMovement(), 4);
-        manager.registerSystem(new Renderer(), manager.min_priority);
-        manager.registerSystem(new CloseEngine(), 0);
+//        manager.registerSystem(new MeshModelLoader(), 0);
+//        manager.registerSystem(new GraphicsUnloader(), 0);
+//        manager.registerSystem(new GameTime(), 0);
+//        manager.registerSystem(new Camera(), 10);
+//        manager.registerSystem(new UpdateMovement(), 5);
+//        manager.registerSystem(new PrimaryMovement(), 4);
+//        manager.registerSystem(new Renderer(), manager.min_priority);
+//        manager.registerSystem(new CloseEngine(), 0);
     }
 
     void Engine::setupEntities(entt::registry &registry, YAML::Node &node) {
