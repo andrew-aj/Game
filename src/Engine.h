@@ -316,14 +316,6 @@ namespace SGE {
 
     void Engine::addSystems() {
         manager.startSystems();
-//        manager.registerSystem(new MeshModelLoader(), 0);
-//        manager.registerSystem(new GraphicsUnloader(), 0);
-//        manager.registerSystem(new GameTime(), 0);
-//        manager.registerSystem(new Camera(), 10);
-//        manager.registerSystem(new UpdateMovement(), 5);
-//        manager.registerSystem(new PrimaryMovement(), 4);
-//        manager.registerSystem(new Renderer(), manager.min_priority);
-//        manager.registerSystem(new CloseEngine(), 0);
     }
 
     void Engine::setupEntities(entt::registry &registry, YAML::Node &node) {

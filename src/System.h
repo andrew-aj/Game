@@ -7,8 +7,6 @@
 #include <execution>
 #include <iostream>
 #include <atomic>
-#include <psapi.h>
-#include <windows.h>
 
 #include "Input.h"
 #include "CustomYaml.h"
@@ -289,9 +287,6 @@ namespace SGE {
                 std::cout << "jump " << dt << std::endl;
 
             }
-            PROCESS_MEMORY_COUNTERS_EX pmc;
-            GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS *) &pmc, sizeof(pmc));
-            std::cout << pmc.PrivateUsage << std::endl;
             auto view = m_registry->view<Physics, Transform>();
             for (auto entity: view) {
                 auto &transform = m_registry->get<Transform>(entity);
