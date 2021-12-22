@@ -1,11 +1,11 @@
 #ifndef VULKAN_INPUT_H
 #define VULKAN_INPUT_H
 
-#include <GLFW/glfw3.h>
 #include <vector>
 #include <map>
 #include <functional>
 #include <iostream>
+#include "Includes.h"
 
 namespace SGE {
 

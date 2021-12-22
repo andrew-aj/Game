@@ -8,13 +8,13 @@
 #include <cassert>
 #include <future>
 #include <vector>
-#include <entt/entt.hpp>
 #include <string>
 #include <functional>
 #include <numeric>
 #include "System.h"
 #include "Scene.h"
 #include "Logger.h"
+#include "Includes.h"
 
 namespace SGE {
 
@@ -68,6 +68,19 @@ namespace SGE {
             //threadStorage = manager.threadStorage;
 
             //manager.threadStorage = nullptr;
+        }
+
+        void startSystems(){
+            YAML::Node node = YAML::LoadFile("data/systems/systems.yml");
+            node = node["Systems"];
+            gameTime->setUp(m_world, node);
+            primaryMovement->setUp(m_world, node);
+            updateMovement->setUp(m_world, node);
+            camera->setUp(m_world, node);
+            render->setUp(m_world, node);
+            meshModelLoader->setUp(m_world, node);
+            closeEngine->setUp(m_world, node);
+            graphicsUnloader->setUp(m_world, node);
         }
 
 //        void registerSystem(System *system, unsigned short priority) {
@@ -129,7 +142,7 @@ namespace SGE {
         template<typename... T>
         bool runSystem(T *...pointers) {
             std::tuple<T...> t;
-            std::array<std::future<bool>, sizeof...(pointers)> array = {runSystemType(pointers...)};
+            std::array<std::future<bool>, sizeof...(pointers)> array = {runSystemType(pointers)...};
             return helper<array.size()>(t, array);
 //            for (int i = 0; i < array.size(); i++) {
 //                auto &out = array[i];
@@ -149,7 +162,7 @@ namespace SGE {
 
         bool runSystems() {
             //first set of systems
-            if (!runSystem(gameTime.get())) {
+            if (!runSystem(gameTime.get(), graphicsUnloader.get(), closeEngine.get())) {
                 return false;
             }
 
@@ -242,7 +255,6 @@ namespace SGE {
         }
 
         bool runShutDown() {
-            closeEngine->run();
             graphicsUnloader->run();
             return true;
         }

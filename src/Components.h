@@ -1,16 +1,9 @@
 #ifndef VULKAN_COMPONENTS_H
 #define VULKAN_COMPONENTS_H
 
-#include <glm/glm.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <string>
-#include <entt/entt.hpp>
-#include "Graphics/GraphicsTools/interface/MapHelper.hpp"
-#include "Graphics/GraphicsTools/interface/GraphicsUtilities.h"
-#include <GLFW/glfw3.h>
-#include <glm/gtx/string_cast.hpp>
 #include <iostream>
+#include "Includes.h"
 
 namespace SGE {
     struct Transform {

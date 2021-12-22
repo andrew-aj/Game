@@ -1,6 +1,4 @@
 #include "Engine.h"
-#include <typeinfo>
-#include <typeindex>
 
 int main(){
     SGE::Engine gameEngine("Testing", 1280, 720);
@@ -8,9 +6,6 @@ int main(){
         return -1;
 
     gameEngine.update();
-
-    std::type_index a = std::type_index(typeid(int));
-    a.name();
 
     return 0;
 }

@@ -5,13 +5,9 @@
 #include <sstream>
 #include <fstream>
 
-#include "boxer/boxer.h"
-#include "entt/entt.hpp"
 #include "Entity.h"
-#include "Graphics/GraphicsTools/interface/MapHelper.hpp"
-#include "Graphics/GraphicsTools/interface/GraphicsUtilities.h"
 #include "DeviceClass.h"
-#include "yaml-cpp/yaml.h"
+#include "Includes.h"
 
 namespace SGE {
     class ModelLoader {
@@ -44,6 +40,8 @@ namespace SGE {
         ModelLoader() {
             this->m_registry = nullptr;
         }
+
+        DeviceClass* deviceClass;
 
         static entt::registry *m_registry;
 

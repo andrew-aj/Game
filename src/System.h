@@ -2,20 +2,17 @@
 #define VULKAN_SYSTEM_H
 
 #include "ModelLoader.h"
-#include <entt/entt.hpp>
 #include <cassert>
 #include <filesystem>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/string_cast.hpp>
 #include <execution>
 #include <iostream>
 #include <atomic>
-#include <yaml-cpp/yaml.h>
 #include <psapi.h>
 #include <windows.h>
 
 #include "Input.h"
 #include "CustomYaml.h"
+#include "Includes.h"
 
 namespace SGE {
 

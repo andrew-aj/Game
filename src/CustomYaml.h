@@ -1,8 +1,8 @@
 #ifndef VULKAN_CUSTOMYAML_H
 #define VULKAN_CUSTOMYAML_H
 
-#include <glm/glm.hpp>
 #include "Components.h"
+#include "Includes.h"
 
 namespace YAML {
     template<>

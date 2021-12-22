@@ -7,6 +7,7 @@ namespace SGE {
 
     ModelLoader::ModelLoader(entt::registry *registry) {
         m_registry = registry;
+        deviceClass = DeviceClass::getInstance();
     }
 
     bool ModelLoader::loadShader(const std::string &loc) {
@@ -36,7 +37,7 @@ namespace SGE {
         psoCreateInfo.PSODesc.Name = loc.c_str();
         psoCreateInfo.PSODesc.PipelineType = Diligent::PIPELINE_TYPE_GRAPHICS;
         psoCreateInfo.GraphicsPipeline.NumRenderTargets = 1;
-        auto &desc = DeviceClass::getSwapChain()->GetDesc();
+        auto &desc = deviceClass->m_pSwapChain->GetDesc();
         psoCreateInfo.GraphicsPipeline.RTVFormats[0] = desc.ColorBufferFormat;
         psoCreateInfo.GraphicsPipeline.DSVFormat = desc.DepthBufferFormat;
         psoCreateInfo.GraphicsPipeline.PrimitiveTopology = Diligent::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -48,7 +49,7 @@ namespace SGE {
         shaderCI.UseCombinedTextureSamplers = true;
 
         Diligent::RefCntAutoPtr<Diligent::IShaderSourceInputStreamFactory> shaderSourceFactory;
-        DeviceClass::getEngineFactory()->CreateDefaultShaderSourceStreamFactory(nullptr, &shaderSourceFactory);
+        deviceClass->m_pDevice->GetEngineFactory()->CreateDefaultShaderSourceStreamFactory(nullptr, &shaderSourceFactory);
         shaderCI.pShaderSourceStreamFactory = shaderSourceFactory;
 
         Diligent::RefCntAutoPtr<Diligent::IShader> pVS;
@@ -56,7 +57,7 @@ namespace SGE {
         shaderCI.EntryPoint = "main";
         shaderCI.Desc.Name = vs.c_str();
         shaderCI.FilePath = ("shaders/" + vs + ".vsh").c_str();
-        DeviceClass::getDevice()->CreateShader(shaderCI, &pVS);
+        deviceClass->m_pDevice->CreateShader(shaderCI, &pVS);
         if (node["UseModelViewProj"].as<bool>()) {
             Diligent::BufferDesc cbDesc;
             cbDesc.Name = "Model View Projection Matrix";
@@ -64,7 +65,7 @@ namespace SGE {
             cbDesc.Usage = Diligent::USAGE_DYNAMIC;
             cbDesc.BindFlags = Diligent::BIND_UNIFORM_BUFFER;
             cbDesc.CPUAccessFlags = Diligent::CPU_ACCESS_WRITE;
-            DeviceClass::getDevice()->CreateBuffer(cbDesc, nullptr, &projMatrixStorage[id]);
+            deviceClass->m_pDevice->CreateBuffer(cbDesc, nullptr, &projMatrixStorage[id]);
         }
 
         Diligent::RefCntAutoPtr<Diligent::IShader> pPS;
@@ -72,7 +73,7 @@ namespace SGE {
         shaderCI.EntryPoint = "main";
         shaderCI.Desc.Name = fs.c_str();
         shaderCI.FilePath = ("shader/" + vs + ".psh").c_str();
-        DeviceClass::getDevice()->CreateShader(shaderCI, &pPS);
+        deviceClass->m_pDevice->CreateShader(shaderCI, &pPS);
 
         int size = node["LayoutElements"].size();
         std::vector<Diligent::LayoutElement> layoutElements(size / 2);
@@ -105,7 +106,7 @@ namespace SGE {
         psoCreateInfo.pVS = pVS;
         psoCreateInfo.pPS = pPS;
         psoCreateInfo.PSODesc.ResourceLayout.DefaultVariableType = Diligent::SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
-        DeviceClass::getDevice()->CreateGraphicsPipelineState(psoCreateInfo, &prgm.shaderPointer);
+        deviceClass->m_pDevice->CreateGraphicsPipelineState(psoCreateInfo, &prgm.shaderPointer);
         if (projMatrixStorage.find(id) != projMatrixStorage.end()) {
             prgm.shaderPointer->GetStaticVariableByName(Diligent::SHADER_TYPE_VERTEX, "Constants")->Set(
                     projMatrixStorage[id]);
@@ -183,7 +184,7 @@ namespace SGE {
         Diligent::BufferData VBData;
         VBData.pData = mesh.vertices.data();
         VBData.DataSize = mesh.vertices.size() * sizeof(Vertex);
-        DeviceClass::getDevice()->CreateBuffer(VertBuffDesc, &VBData, &ref);
+        deviceClass->m_pDevice->CreateBuffer(VertBuffDesc, &VBData, &ref);
 
         return true;
     }
@@ -215,7 +216,7 @@ namespace SGE {
         Diligent::BufferData IBData;
         IBData.pData = mesh.indices.data();
         IBData.DataSize = mesh.indices.size() * sizeof(short);
-        DeviceClass::getDevice()->CreateBuffer(IndBuffDesc, &IBData, &ref);
+        deviceClass->m_pDevice->CreateBuffer(IndBuffDesc, &IBData, &ref);
 
         return true;
     }

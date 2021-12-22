@@ -1,8 +1,8 @@
 #ifndef VULKAN_SCENE_H
 #define VULKAN_SCENE_H
 
-#include <entt/entt.hpp>
 #include "Components.h"
+#include "Includes.h"
 
 namespace SGE {
 
