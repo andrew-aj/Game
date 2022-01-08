@@ -1,6 +1,9 @@
+The purpose of this project is to learn game programming by making a 
+small 2D game.
+
 The libraries needed to run this project are:
 <br />[Vulkan SDK](https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-sdk.exe)
-<br />[BGFX](https://github.com/bkaradzic/bgfx.cmake)
+<br />[DiligentCore](https://github.com/DiligentGraphics/DiligentCore/tree/6d4b60e80c47874d137bb02fe95e40830e6b8b2b)
 <br />[Boxer](https://github.com/aaronmjacobs/Boxer)
 <br />[GLFW](https://www.glfw.org/download.html)
 <br />[EnTT](https://github.com/skypjack/entt/releases)
@@ -16,8 +19,8 @@ To install the rest of the libraries, first you need to set your environment var
 Create a new environment variable called CMAKE_PREFIX_PATH and set it to be the location
 where your libraries will be stored. For example, I have mine as C:\LIBRARIES
 
-To install BGFX, follow the instructions and clone the repository with all it's submoules
-to CMAKE_PREFIX_PATH/bgfx so that all the source files are in that folder.
+To install DiligentCore, download the latest release and put it into a folder in your libraries
+path called DiligentCore. 
 
 To install Boxer, clone the library to CMAKE_PREFIX_PATH/Boxer.
 
