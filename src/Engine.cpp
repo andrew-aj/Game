@@ -1,117 +1,6 @@
-#ifndef VULKAN_ENGINE_H
-#define VULKAN_ENGINE_H
+#include "Engine.h"
 
-//#define GLFW_INCLUDE_VULKAN
-
-#ifndef ENGINE_DLL
-#    define ENGINE_DLL 1
-#endif
-
-#ifndef D3D11_SUPPORTED
-#    define D3D11_SUPPORTED 0
-#endif
-
-#ifndef D3D12_SUPPORTED
-#    define D3D12_SUPPORTED 0
-#endif
-
-#ifndef GL_SUPPORTED
-#    define GL_SUPPORTED 0
-#endif
-
-#ifndef VULKAN_SUPPORTED
-#    define VULKAN_SUPPORTED 0
-#endif
-
-#ifndef METAL_SUPPORTED
-#    define METAL_SUPPORTED 0
-#endif
-
-#if PLATFORM_WIN32
-#    define GLFW_EXPOSE_NATIVE_WIN32 1
-#endif
-
-#if PLATFORM_LINUX
-#    define GLFW_EXPOSE_NATIVE_X11 1
-#endif
-
-#if PLATFORM_MACOS
-#    define GLFW_EXPOSE_NATIVE_COCOA 1
-#endif
-
-#if D3D11_SUPPORTED
-#    include "Graphics/GraphicsEngineD3D11/interface/EngineFactoryD3D11.h"
-#endif
-#if D3D12_SUPPORTED
-#    include "Graphics/GraphicsEngineD3D12/interface/EngineFactoryD3D12.h"
-#endif
-#if GL_SUPPORTED
-
-#include "Graphics/GraphicsEngineOpenGL/interface/EngineFactoryOpenGL.h"
-
-#endif
-#if VULKAN_SUPPORTED
-
-#include "Graphics/GraphicsEngineVulkan/interface/EngineFactoryVk.h"
-
-#endif
-#if METAL_SUPPORTED
-#    include "Graphics/GraphicsEngineMetal/interface/EngineFactoryMtl.h"
-#endif
-
-#if PLATFORM_WIN32
-#    undef GetObject
-#    undef CreateWindow
-#endif
-
-#include <string>
-#include <cstdint>
-#include <iostream>
-#include <any>
-
-#include "SystemManager.h"
-#include "Input.h"
-#include "Components.h"
-#include "Scene.h"
-#include "Entity.h"
-#include "Includes.h"
-
-namespace SGE {
-
-    class Engine {
-    public:
-        Engine();
-
-        Engine(const std::string &name, uint32_t width, uint32_t height);
-
-        ~Engine();
-
-        static void resizeCallback(GLFWwindow *window, int width, int height);
-
-        void setupEntities(entt::registry &registry, YAML::Node &node);
-
-        bool createWindow(int glfwAPIHint);
-
-        bool initEngine(Diligent::RENDER_DEVICE_TYPE deviceType);
-
-        void update();
-
-        void addSystems();
-
-    private:
-        std::string name;
-        uint32_t WIDTH, HEIGHT;
-
-        GLFWwindow *window = nullptr;
-        std::shared_ptr<Entity> windowEnt;
-
-        static DeviceClass* deviceClass;
-
-        Scene m_scene;
-
-        SystemManager manager = SystemManager(m_scene);
-    };
-
+namespace SGE{
     DeviceClass* Engine::deviceClass;
 
     Engine::Engine() : name("Vulkan"), WIDTH(1280), HEIGHT(720) {
@@ -137,7 +26,6 @@ namespace SGE {
 
     void Engine::resizeCallback(GLFWwindow *window, int width, int height) {
         Engine *engine = static_cast<Engine *>(glfwGetWindowUserPointer(window));
-        windowSizeUpdate(engine->m_scene.m_world, width, height);
         if (deviceClass->m_pSwapChain != nullptr)
             deviceClass->m_pSwapChain->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
     }
@@ -279,30 +167,29 @@ namespace SGE {
 
         YAML::Node node = YAML::LoadFile("data/systems/entities.yml");
         node = node["Entities"];
-        setupEntities(m_scene.m_world, node);
+        setupEntities(node);
 
-        entt::entity tempEntt = node["Window"]["PregenID"].as<entt::entity>();
-        auto &windPtr = m_scene.m_world.get<WindowPtr>(tempEntt);
+        windowEnt = node["Window"]["PregenID"].as<entt::entity>();
+        auto &windPtr = m_registry.get<WindowPtr>(windowEnt);
         windPtr.window = window;
         windPtr.m_Device = deviceClass->m_pDevice;
         windPtr.m_ImmediateContext = deviceClass->m_pImmediateContext;
         windPtr.m_SwapChain = deviceClass->m_pSwapChain;
 
-        windowEnt = std::make_shared<Entity>(tempEntt, &m_scene.m_world);
-        addSystems();
+        startSystems();
         manager.runStartUp();
 
         return true;
     }
 
     void Engine::update() {
-        auto &comp = m_scene.m_world.get<WindowPtr>(windowEnt->operator entt::entity());
+        auto &comp = m_registry.get<WindowPtr>(windowEnt);
         while (!glfwWindowShouldClose(window) && comp.running) {
             glfwPollEvents();
 
             Diligent::ITextureView *pRTV = deviceClass->m_pSwapChain->GetCurrentBackBufferRTV();
             deviceClass->m_pImmediateContext->SetRenderTargets(1, &pRTV, nullptr,
-                                                  Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+                                                               Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
             const float clearColor[4] = {};
             deviceClass->m_pImmediateContext->ClearRenderTarget(pRTV, clearColor, Diligent::RESOURCE_STATE_TRANSITION_MODE_VERIFY);
@@ -314,46 +201,32 @@ namespace SGE {
         }
     }
 
-    void Engine::addSystems() {
+    void Engine::startSystems() {
         manager.startSystems();
     }
 
-    void Engine::setupEntities(entt::registry &registry, YAML::Node &node) {
-        std::unordered_map<std::string, std::any> stringToComp;
-        stringToComp["ModelComponent"] = ModelComponent();
-        stringToComp["Vertex"] = Vertex();
-        stringToComp["MeshComponent"] = MeshComponent();
-        stringToComp["Program"] = Program();
-        stringToComp["VertexBuffer"] = VertexBuffer();
-        stringToComp["IndexBuffer"] = IndexBuffer();
-        stringToComp["MovementDisabled"] = MovementDisabled();
-
+    void Engine::setupEntities(YAML::Node &node) {
         for (auto it = node.begin(); it != node.end(); it++) {
             auto &sub = it->second;
-            entt::entity entity = registry.create((entt::entity) sub["PregenID"].as<uint32_t>());
+            entt::entity entity = m_registry.create((entt::entity) sub["PregenID"].as<uint32_t>());
             if (sub["CameraComponent"])
-                registry.emplace<CameraComponent>(entity) = sub["CameraComponent"].as<CameraComponent>();
+                m_registry.emplace<CameraComponent>(entity) = sub["CameraComponent"].as<CameraComponent>();
             if (sub["Transform"])
-                registry.emplace<Transform>(entity) = sub["Transform"].as<Transform>();
+                m_registry.emplace<Transform>(entity) = sub["Transform"].as<Transform>();
             if (sub["Physics"])
-                registry.emplace<Physics>(entity) = sub["Physics"].as<Physics>();
+                m_registry.emplace<Physics>(entity) = sub["Physics"].as<Physics>();
             if (sub["AttachedTo"])
-                registry.emplace<AttachedTo>(entity) = sub["AttachedTo"].as<AttachedTo>();
+                m_registry.emplace<AttachedTo>(entity) = sub["AttachedTo"].as<AttachedTo>();
             if (sub["PrimaryController"])
-                registry.emplace<PrimaryController>(entity) = sub["PrimaryController"].as<PrimaryController>();
+                m_registry.emplace<PrimaryController>(entity) = sub["PrimaryController"].as<PrimaryController>();
             if (sub["Tag"])
-                registry.emplace<Tag>(entity) = sub["Tag"].as<Tag>();
+                m_registry.emplace<Tag>(entity) = sub["Tag"].as<Tag>();
             if (sub["Time"])
-                registry.emplace<Time>(entity) = sub["Time"].as<Time>();
+                m_registry.emplace<Time>(entity) = sub["Time"].as<Time>();
             if (sub["WindowPtr"])
-                registry.emplace<WindowPtr>(entity) = sub["WindowPtr"].as<WindowPtr>();
+                m_registry.emplace<WindowPtr>(entity) = sub["WindowPtr"].as<WindowPtr>();
             if (sub["UIComponent"])
-                registry.emplace<UIComponent>(entity) = sub["UIComponent"].as<UIComponent>();
+                m_registry.emplace<UIComponent>(entity) = sub["UIComponent"].as<UIComponent>();
         }
     }
-
-
 }
-
-
-#endif //VULKAN_ENGINE_H

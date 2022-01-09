@@ -17,6 +17,7 @@ add_subdirectory("${CMAKE_PREFIX_PATH}/yaml" "${CMAKE_PREFIX_PATH}/yaml/build")
 add_subdirectory("${CMAKE_PREFIX_PATH}/DiligentCore" "${CMAKE_PREFIX_PATH}/DiligentCore/build")
 
 include_directories("src")
+include_directories("include")
 include_directories(${CMAKE_PREFIX_PATH}/GLFW/include)
 include_directories("${CMAKE_PREFIX_PATH}/EnTT/src/")
 include_directories("${CMAKE_PREFIX_PATH}/glm")
