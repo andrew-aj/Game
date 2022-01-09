@@ -1,6 +1,6 @@
 #include "Logger.h"
 
 namespace SGE{
-    std::unique_ptr<Logger> Logger::logger;
+    std::unique_ptr<Logger> Logger::m_logger;
 }
 
