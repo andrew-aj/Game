@@ -3,7 +3,7 @@
 namespace SGE {
     SystemManager::SystemManager(entt::registry &registry) {
         m_world = &registry;
-        logger = Logger::getInstance();
+        m_logger = Logger::getInstance();
     }
 
     SystemManager::~SystemManager() {
